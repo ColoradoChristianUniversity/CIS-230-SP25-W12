@@ -28,6 +28,65 @@ This represents acceptance criteria that is true irrespective of assignment crit
 
 ## Information
 
+### Class diagram of `Bank.API`
+
+```mermaid
+classDiagram
+    class Program {
+        +Main(string[] args)
+    }
+
+    class IEndpointHandler {
+        <<interface>>
+        +CreateAccountAsync() IResult
+        +DeleteAccountAsync(int accountId) IResult
+        +GetAccountAsync(int accountId) IResult
+        +GetDefaultSettingsAsync() IResult
+        +WithdrawAsync(int accountId, double amount) IResult
+        +DepositAsync(int accountId, double amount) IResult
+        +GetTransactionHistoryAsync(int accountId) IResult
+        +AddTransactionAsync(int accountId, string type, double amount) IResult
+        +ListAccountsAsync() IResult
+    }
+
+    class EndpointHandler {
+        +Storage Storage
+        +CreateAccountAsync() IResult
+        +DeleteAccountAsync(int accountId) IResult
+        +ListAccountsAsync() IResult
+        -WrapperAsync(Func<IResult> action) IResult
+    }
+
+    class Storage {
+        +ListAccounts() int[]
+        +AddAccount() Account
+        +GetAccount(int id) Account?
+        +RemoveAccount(int id)
+        -SaveChanges()
+    }
+
+    EndpointHandler ..|> IEndpointHandler
+```
+
+### General workflow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as Minimal API (Program.cs)
+    participant Handler as EndpointHandler
+    participant Storage as Storage
+    
+    Client->>API: POST /account
+    API->>Handler: CreateAccountAsync()
+    Handler->>Storage: AddAccount()
+    Storage->>Storage: Generate new account ID
+    Storage->>Storage: SaveChanges()
+    Storage-->>Handler: Returns new Account
+    Handler-->>API: Returns HTTP 200 with Account
+    API-->>Client: HTTP 200 OK (Account JSON)
+```
+
 **Create an account** → `POST /account`  
 *Creates a new account with the specified settings.*  
 ```csharp
