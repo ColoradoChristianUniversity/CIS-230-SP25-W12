@@ -87,6 +87,8 @@ sequenceDiagram
     API-->>Client: HTTP 200 OK (Account JSON)
 ```
 
+### API Specification
+
 **Create an account** → `POST /account`  
 *Creates a new account with the specified settings.*  
 ```csharp
