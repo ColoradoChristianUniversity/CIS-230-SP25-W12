@@ -94,7 +94,7 @@ sequenceDiagram
 ```csharp
 var client = new HttpClient();
 var url = "https://api.example.com/account";
-var payload = new Account { AccountId = 123, Settings = new AccountSettings { OverdraftFee = 25.00 } };
+var payload = new Account { Id = 123, Settings = new AccountSettings { OverdraftFee = 25.00 } };
 var response = await client.PostAsJsonAsync(url, payload);
 ```
 
@@ -121,7 +121,7 @@ var settings = await response.Content.ReadFromJsonAsync<AccountSettings>();
 ```csharp
 var client = new HttpClient();
 var url = "https://api.example.com/withdraw/123/50.00";
-var payload = new Transaction { AccountId = 123, Type = TransactionType.Withdraw, Amount = 50.00 };
+var payload = new Transaction { Id = 123, Type = TransactionType.Withdraw, Amount = 50.00 };
 var response = await client.PostAsJsonAsync(url, payload);
 ```
 
@@ -130,7 +130,7 @@ var response = await client.PostAsJsonAsync(url, payload);
 ```csharp
 var client = new HttpClient();
 var url = "https://api.example.com/deposit/123/100.00";
-var payload = new Transaction { AccountId = 123, Type = TransactionType.Deposit, Amount = 100.00 };
+var payload = new Transaction { Id = 123, Type = TransactionType.Deposit, Amount = 100.00 };
 var response = await client.PostAsJsonAsync(url, payload);
 ```
 
@@ -148,6 +148,6 @@ var transactions = await response.Content.ReadFromJsonAsync<List<Transaction>>()
 ```csharp
 var client = new HttpClient();
 var url = "https://api.example.com/transaction/123/Fee_Overdraft/15.00";
-var payload = new Transaction { AccountId = 123, Type = TransactionType.Fee_Overdraft, Amount = 15.00 };
+var payload = new Transaction { Id = 123, Type = TransactionType.Fee_Overdraft, Amount = 15.00 };
 var response = await client.PostAsJsonAsync(url, payload);
 ```
