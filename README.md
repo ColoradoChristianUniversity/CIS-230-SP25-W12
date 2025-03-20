@@ -69,6 +69,8 @@ classDiagram
 
 ### API Endpoints
 
+Use the existing endpoints as a guide and pattern to follow. This means using `EndpointHandler` and inside `EndpointHandler` methods, copy the patterns already there illustrating how to do this correctly.
+
 #### **Create an account** → `POST /account`
 
 ```mermaid
