@@ -11,7 +11,7 @@ public partial class Program
         // Register services
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
-        builder.Services.AddSingleton<IEndpointHandler, EndpointHandler>();
+        builder.Services.AddSingleton<IEndpointHandler, EndpointHandler>((x) => new EndpointHandler());
 
         var app = builder.Build();
 
