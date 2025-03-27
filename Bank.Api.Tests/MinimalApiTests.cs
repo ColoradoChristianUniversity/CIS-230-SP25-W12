@@ -83,7 +83,5 @@ public class MinimalApiTests : IClassFixture<WebApplicationFactory<Program>>, ID
 
         var deletedAccount = _storage.GetAccount(accountId);
         deletedAccount.Should().BeNull();
-
-        // Test Commit
     }
 }
