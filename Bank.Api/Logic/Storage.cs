@@ -1,17 +1,53 @@
 using System.Text.Json;
 using Bank.Logic;
+using Bank.Logic.Abstractions;
+using System.Text.Json.Serialization;
 
 namespace Bank.Api.Logic;
+public class ITransactionConverter : JsonConverter<ITransaction>
+{
+    public override ITransaction? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        using (var document = JsonDocument.ParseValue(ref reader))
+        {
+            var root = document.RootElement;
+
+            if (!root.TryGetProperty("Type", out var typeProperty))
+            {
+                throw new JsonException("Missing 'Type' property.");
+            }
+
+            var type = typeProperty.GetString();
+            return type switch
+            {
+                nameof(Transaction) => JsonSerializer.Deserialize<Transaction>(root.GetRawText(), options),
+                _ => throw new JsonException($"Unknown transaction type: {type}")
+            };
+        }
+    }
+
+    public override void Write(Utf8JsonWriter writer, ITransaction value, JsonSerializerOptions options)
+    {
+        JsonSerializer.Serialize(writer, (object)value, value.GetType(), options);
+    }
+}
 
 public class Storage
 {
     private const int firstId = 1;
     private readonly string path;
     private readonly List<Account> accounts;
+    private readonly JsonSerializerOptions jsonOptions;
 
     public Storage(string? fileName = "store.json")
     {
         path = Path.Combine(AppContext.BaseDirectory, fileName ?? "store.json");
+
+        jsonOptions = new JsonSerializerOptions
+        {
+            Converters = { new ITransactionConverter() },
+            WriteIndented = true
+        };
 
         if (!File.Exists(path))
         {
@@ -20,11 +56,11 @@ public class Storage
 
         try
         {
-            accounts = JsonSerializer.Deserialize<List<Account>>(File.ReadAllText(path)) ?? [];
+            accounts = JsonSerializer.Deserialize<List<Account>>(File.ReadAllText(path), jsonOptions) ?? new List<Account>();
         }
         catch (JsonException)
         {
-            accounts = [];
+            accounts = new List<Account>();
         }
     }
 
@@ -72,7 +108,31 @@ public class Storage
 
     private void SaveChanges()
     {
-        var json = JsonSerializer.Serialize(accounts);
+        var json = JsonSerializer.Serialize(accounts, jsonOptions);
         File.WriteAllText(path, json);
+    }
+
+    // LS Additions:
+    public Transaction CreateTransaction(TransactionType type, double amount, DateTime date)
+    {
+        return new Transaction()
+        {
+            Type = type,
+            Amount = amount,
+            Date = date
+        };
+    }
+
+    public void AddTransaction(Account account, double amount, TransactionType transaction)
+    {
+        account.TryAddTransaction(CreateTransaction(transaction, amount, DateTime.UtcNow));
+        SaveChanges();
+    }
+
+    public IReadOnlyList<ITransaction> GetTransactions(int accountId)
+    {
+        var account = GetAccount(accountId);
+        var transactions = account.GetTransactions().OfType<Transaction>().ToList();
+        return transactions;
     }
 }

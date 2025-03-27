@@ -1,3 +1,5 @@
+using Bank.Logic;
+
 namespace Bank.Api.Logic;
 
 public class EndpointHandler : IEndpointHandler
@@ -8,10 +10,29 @@ public class EndpointHandler : IEndpointHandler
     {
         Storage = new Storage(filePath ?? "store.json");
     }
-
-    public Task<IResult> AddTransactionAsync(int accountId, string type, double amount)
+    // TODO: Added async tag, will this mess everything up?
+    public async Task<IResult> AddTransactionAsync(int accountId, string type, double amount)
     {
-        throw new NotImplementedException();
+        return await WrapperAsync(Do);
+
+        IResult Do()
+        {
+            var account = Storage.GetAccount(accountId);
+
+            if (account == null){
+                return Results.NotFound($"Account {accountId} not found");
+            }
+
+            // Validate the transaction type
+            if (!Enum.TryParse<TransactionType>(type, true, out var transactionType) || transactionType == TransactionType.Unknown)
+            {
+                return Results.BadRequest($"Invalid transaction type: {type}");
+            }
+
+            Storage.AddTransaction(account, amount, transactionType);
+
+            return Results.Ok();
+        }
     }
 
     public async Task<IResult> CreateAccountAsync()
@@ -37,12 +58,38 @@ public class EndpointHandler : IEndpointHandler
 
     public async Task<IResult> DepositAsync(int accountId, double amount)
     {
-        throw new NotImplementedException();
+        return await WrapperAsync(Do);
+
+        IResult Do()
+        {
+            var account = Storage.GetAccount(accountId);
+            
+            if (account == null){
+                return Results.NotFound($"Account {accountId} not found");
+            }
+
+            double balance = account.GetBalance();
+
+            Storage.AddTransaction(account, amount, TransactionType.Deposit);
+
+            return Results.Ok();
+        }
     }
 
     public async Task<IResult> GetAccountAsync(int accountId)
     {
-        throw new NotImplementedException();
+        return await WrapperAsync(Do);
+
+        IResult Do()
+        {
+        var account = Storage.GetAccount(accountId);
+
+        if (account == null){
+            return Results.NotFound($"Account {accountId} not found");
+        }
+
+        return Results.Ok(account);
+        }
     }
 
     public async Task<IResult> GetDefaultSettingsAsync()
@@ -52,7 +99,20 @@ public class EndpointHandler : IEndpointHandler
 
     public async Task<IResult> GetTransactionHistoryAsync(int accountId)
     {
-        throw new NotImplementedException();
+        return await WrapperAsync(Do);
+
+        IResult Do()
+        {
+            var account = Storage.GetAccount(accountId);
+
+            if (account == null){
+                return Results.NotFound($"Account {accountId} not found");
+            }
+
+            var transactions = Storage.GetTransactions(accountId);
+
+            return Results.Json(transactions);
+        }
     }
 
     public async Task<IResult> ListAccountsAsync()
@@ -68,10 +128,32 @@ public class EndpointHandler : IEndpointHandler
 
     public async Task<IResult> WithdrawAsync(int accountId, double amount)
     {
-        throw new NotImplementedException();
+        return await WrapperAsync(Do);
+
+        IResult Do()
+        {
+            var account = Storage.GetAccount(accountId);
+            
+            if (account == null){
+                return Results.NotFound($"Account {accountId} not found");
+            }
+
+            double balance = account.GetBalance();
+
+            // Check sufficient funds
+            if (balance < amount)
+            {
+                return Results.BadRequest("Insufficient funds");
+            }
+
+            Storage.AddTransaction(account, amount, TransactionType.Withdraw);
+
+            return Results.Ok();
+        }
+
     }
 
-    private static async Task<IResult> WrapperAsync(Func<IResult> action)
+    public static async Task<IResult> WrapperAsync(Func<IResult> action)
     {
         try
         {
