@@ -14,7 +14,7 @@ public partial class Program
 
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
-        builder.Services.AddSingleton<IEndpointHandler, EndpointHandler>((x) => new EndpointHandler());
+        builder.Services.AddSingleton<IEndpointHandler, EndpointHandler>(x => new EndpointHandler("store.json"));
 
         var app = builder.Build();
 
@@ -27,8 +27,8 @@ public partial class Program
         app.MapGet("/account/{accountId}", async (IEndpointHandler handler, int accountId) => await handler.GetAccountAsync(accountId));
         app.MapPost("/withdraw/{accountId}/{amount}", async (IEndpointHandler handler, int accountId, double amount) => await handler.WithdrawAsync(accountId, amount));
         app.MapPost("/deposit/{accountId}/{amount}", async (IEndpointHandler handler, int accountId, double amount) => await handler.DepositAsync(accountId, amount));
-        app.MapGet("/transactions/{accountId}", async (IEndpointHandler handler, int accountId) => await handler.GetTransactionHistoryAsync(accountId));
-        app.MapPost("/transaction/{accountId}/{type}/{amount}", async (IEndpointHandler handler, int accountId, string type, double amount) => await handler.AddTransactionAsync(accountId, type, amount));
+        app.MapPost("/transaction/{accountId}", async (IEndpointHandler handler, int accountId, string type, double amount) => await handler.AddTransactionAsync(accountId, type, amount));
+        app.MapGet("/transaction/{accountId}", async (IEndpointHandler handler, int accountId) => await handler.GetTransactionHistoryAsync(accountId));
 
         app.Run();
     }

@@ -118,4 +118,16 @@ public class MinimalApiTests : IClassFixture<WebApplicationFactory<Program>>, ID
         var response = await _client.PostAsync($"/withdraw/{accountId}/50.00", null);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task GetTransactionHistory_ReturnsTransactions()
+    {
+        var accountId = await CreateTestAccountAsync();
+        await _client.PostAsync($"/deposit/{accountId}/100.00", null);
+        await _client.PostAsync($"/withdraw/{accountId}/50.00", null);
+        var response = await _client.GetAsync($"/transaction/{accountId}");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var transactions = await response.Content.ReadFromJsonAsync<List<Bank.Logic.Abstractions.ITransaction>>();
+        transactions!.Count.Should().Be(2);
+    }
 }

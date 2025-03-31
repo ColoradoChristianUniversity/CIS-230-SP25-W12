@@ -40,20 +40,6 @@ public class Storage
         SaveChanges();
     }
 
-    public void AddTransaction(int accountId, Transaction transaction)
-    {
-        var account = GetAccount(accountId);
-        if (account == null)
-        {
-            throw new ArgumentException("Account not found.");
-        }
-        if (!account.TryAddTransaction(transaction))
-        {
-            throw new InvalidOperationException("Transaction rejected.");
-        }
-        SaveChanges();
-    }
-
     private void SaveChanges()
     {
         File.WriteAllText(_filePath, System.Text.Json.JsonSerializer.Serialize(_accounts));

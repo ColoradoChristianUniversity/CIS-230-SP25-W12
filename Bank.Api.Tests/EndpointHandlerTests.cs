@@ -103,4 +103,16 @@ public class EndpointHandlerTests : IDisposable
         Assert.Equal(35.00, okResult.Value!.OverdraftFee);
         Assert.Equal(10.00, okResult.Value!.ManagementFee);
     }
+
+    [Fact]
+    public async Task GetTransactionHistoryAsync_ReturnsTransactions()
+    {
+        var createResult = await _handler.CreateAccountAsync();
+        var accountId = Assert.IsType<Ok<Account>>(createResult).Value!.Id;
+        await _handler.DepositAsync(accountId, 100.00);
+        await _handler.WithdrawAsync(accountId, 50.00);
+        var result = await _handler.GetTransactionHistoryAsync(accountId);
+        var okResult = Assert.IsType<Ok<List<Bank.Logic.Abstractions.ITransaction>>>(result);
+        Assert.Equal(2, okResult.Value!.Count);
+    }
 }

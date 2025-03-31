@@ -1,5 +1,5 @@
-using Bank.Logic; // For TransactionType, Transaction, AccountSettings
-using Bank.Logic.Abstractions; // For ITransaction (implemented by Transaction)
+using Bank.Logic;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Bank.Api.Logic;
 
@@ -7,115 +7,193 @@ public class EndpointHandler : IEndpointHandler
 {
     public Storage Storage { get; }
 
-    public EndpointHandler(string? filePath = null)
+    public EndpointHandler(string filePath)
     {
-        Storage = new Storage(filePath ?? "store.json");
-    }
-
-    public async Task<IResult> AddTransactionAsync(int accountId, string type, double amount)
-    {
-        throw new NotImplementedException();
+        Storage = new Storage(filePath);
     }
 
     public async Task<IResult> CreateAccountAsync()
     {
-        return await WrapperAsync(Do);
-
-        IResult Do()
+        return await WrapperAsync(() =>
         {
-            return Results.Ok(Storage.AddAccount());
-        }
-    }
-
-    public async Task<IResult> DeleteAccountAsync(int accountId)
-    {
-        return await WrapperAsync(Do);
-
-        IResult Do()
-        {
-            var account = Storage.GetAccount(accountId);
-            if (account == null)
+            var account = new Account
             {
-                return Results.NotFound();
-            }
-
-            Storage.RemoveAccount(accountId);
-            return Results.Ok();
-        }
-    }
-
-    public async Task<IResult> DepositAsync(int accountId, double amount)
-    {
-        throw new NotImplementedException();
+                Id = Storage.ListAccounts().Length > 0 ? Storage.ListAccounts().Max() + 1 : 1,
+                Settings = new AccountSettings()
+            };
+            Storage.AddAccount(account);
+            return Task.FromResult<IResult>(TypedResults.Ok(account));
+        });
     }
 
     public async Task<IResult> GetAccountAsync(int accountId)
     {
-        throw new NotImplementedException();
-    }
-
-    public async Task<IResult> GetDefaultSettingsAsync()
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<IResult> GetTransactionHistoryAsync(int accountId)
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<IResult> ListAccountsAsync()
-    {
-        return await WrapperAsync(Do);
-
-        IResult Do()
+        return await WrapperAsync(() =>
         {
-            var accounts = Storage.GetAllAccounts();
-            return Results.Ok(accounts);
-        }
+            var account = Storage.GetAccount(accountId);
+            if (account == null)
+            {
+                return Task.FromResult<IResult>(TypedResults.BadRequest("Account not found."));
+            }
+            return Task.FromResult<IResult>(TypedResults.Ok(account));
+        });
+    }
+
+    public async Task<IResult> DepositAsync(int accountId, double amount)
+    {
+        return await WrapperAsync(() =>
+        {
+            if (amount <= 0)
+            {
+                return Task.FromResult<IResult>(TypedResults.BadRequest("Deposit amount must be positive."));
+            }
+            var account = Storage.GetAccount(accountId);
+            if (account == null)
+            {
+                return Task.FromResult<IResult>(TypedResults.BadRequest("Account not found."));
+            }
+            var transaction = new Transaction
+            {
+                Type = TransactionType.Deposit,
+                Amount = amount,
+                Date = DateTime.Now
+            };
+            if (account.Transactions == null)
+            {
+                account.Transactions = new List<Bank.Logic.Abstractions.ITransaction>();
+            }
+            if (!account.TryAddTransaction(transaction))
+            {
+                return Task.FromResult<IResult>(TypedResults.BadRequest("Deposit rejected."));
+            }
+            Storage.AddAccount(account);
+            return Task.FromResult<IResult>(TypedResults.Ok(transaction));
+        });
+            }
+            Storage.AddAccount(account);
+            return Task.FromResult<IResult>(TypedResults.Ok(transaction));
+        });
     }
 
     public async Task<IResult> WithdrawAsync(int accountId, double amount)
     {
-        throw new NotImplementedException();
+        return await WrapperAsync(() =>
+        {
+            var account = Storage.GetAccount(accountId);
+            if (account == null)
+            {
+                return Task.FromResult<IResult>(TypedResults.BadRequest("Account not found."));
+            }
+            var transaction = new Transaction
+            {
+                Type = TransactionType.Withdraw,
+                Amount = -amount,
+                Date = DateTime.Now
+            };
+            if (account.Transactions == null)
+            {
+                account.Transactions = new List<Bank.Logic.Abstractions.ITransaction>();
+            }
+            if (!account.TryAddTransaction(transaction))
+            {
+                return Task.FromResult<IResult>(TypedResults.BadRequest("Withdrawal rejected."));
+            }
+            Storage.AddAccount(account);
+            return Task.FromResult<IResult>(TypedResults.Ok(transaction));
+        });
     }
 
-    private static async Task<IResult> WrapperAsync(Func<IResult> action)
+    public async Task<IResult> ListAccountsAsync()
     {
-        try
+        return await WrapperAsync(() =>
         {
-            return await Task.Run(action);
-        }
-        catch (ArgumentException)
-        {
-            throw;
-        }
-        catch (InvalidOperationException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            return Results.Problem($"An error occurred: {ex.Message}");
-        }
+            return Task.FromResult<IResult>(TypedResults.Ok(Storage.ListAccounts()));
+        });
     }
-    private static async Task<IResult> WrapperAsync(Func<Task<IResult>> action)
+
+    public async Task<IResult> DeleteAccountAsync(int accountId)
+    {
+        return await WrapperAsync(() =>
+        {
+            Storage.RemoveAccount(accountId);
+            return Task.FromResult<IResult>(TypedResults.Ok());
+        });
+    }
+
+    public async Task<IResult> AddTransactionAsync(int accountId, string type, double amount)
+    {
+        return await WrapperAsync(() =>
+        {
+            if (!Enum.TryParse<TransactionType>(type, true, out var transactionType))
+            {
+                return Task.FromResult<IResult>(TypedResults.BadRequest("Invalid transaction type."));
+            }
+            var account = Storage.GetAccount(accountId);
+            if (account == null)
+            {
+                return Task.FromResult<IResult>(TypedResults.BadRequest("Account not found."));
+            }
+            var transaction = new Transaction
+            {
+                Type = transactionType,
+                Amount = amount,
+                Date = DateTime.Now
+            };
+            if (account.Transactions == null)
+            {
+                account.Transactions = new List<Bank.Logic.Abstractions.ITransaction>();
+            }
+            if (!account.TryAddTransaction(transaction))
+            {
+                return Task.FromResult<IResult>(TypedResults.BadRequest("Transaction rejected."));
+            }
+            Storage.AddAccount(account);
+            return Task.FromResult<IResult>(TypedResults.Ok(transaction));
+        });
+    }
+
+    public async Task<IResult> GetDefaultSettingsAsync()
+    {
+        return await WrapperAsync(() =>
+        {
+            return Task.FromResult<IResult>(TypedResults.Ok(new AccountSettings()));
+        });
+    }
+
+    public async Task<IResult> GetTransactionHistoryAsync(int accountId)
+    {
+        return await WrapperAsync(() =>
+        {
+            var account = Storage.GetAccount(accountId);
+            if (account == null)
+            {
+                return Task.FromResult<IResult>(TypedResults.BadRequest("Account not found."));
+            }
+            if (account.Transactions == null)
+            {
+                account.Transactions = new List<Bank.Logic.Abstractions.ITransaction>();
+            }
+            return Task.FromResult<IResult>(TypedResults.Ok(account.Transactions));
+        });
+    }
+
+    private static async Task<IResult> WrapperAsync(Func<Task<IResult>> func)
     {
         try
         {
-            return await action();
+            return await func();
         }
-        catch (ArgumentException)
+        catch (ArgumentException ex)
         {
-            throw;
+            return TypedResults.BadRequest(ex.Message);
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
-            throw;
+            return TypedResults.BadRequest(ex.Message);
         }
         catch (Exception ex)
         {
-            return Results.Problem($"An error occurred: {ex.Message}");
+            return TypedResults.BadRequest($"An unexpected error occurred: {ex.Message}");
         }
     }
 }
