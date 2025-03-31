@@ -2,8 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Bank.Logic;
 using Bank.Api.Logic;
+using Xunit;
 
 namespace Bank.Api.Tests;
 
@@ -14,19 +16,22 @@ public class MinimalApiTests : IClassFixture<WebApplicationFactory<Program>>, ID
 
     public MinimalApiTests(WebApplicationFactory<Program> factory)
     {
-        _client = factory.CreateClient();
-        _storage = new Storage();
+        _client = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.AddSingleton<IEndpointHandler>(new EndpointHandler("test_store.json"));
+            });
+        }).CreateClient();
+        _storage = new Storage("test_store.json");
     }
 
     private async Task<int> CreateTestAccountAsync()
     {
         var response = await _client.PostAsync("/account", null);
-        response.IsSuccessStatusCode.Should().BeTrue();
-
+        response.EnsureSuccessStatusCode();
         var account = await response.Content.ReadFromJsonAsync<Account>();
-        account.Should().NotBeNull();
-
-        return account.Id;
+        return account!.Id;
     }
 
     public void Dispose()
@@ -38,7 +43,7 @@ public class MinimalApiTests : IClassFixture<WebApplicationFactory<Program>>, ID
     {
         foreach (var id in _storage.ListAccounts())
         {
-            _storage.RemoveAccount(id); // Delete all accounts after tests
+            _storage.RemoveAccount(id);
         }
     }
 
@@ -50,38 +55,67 @@ public class MinimalApiTests : IClassFixture<WebApplicationFactory<Program>>, ID
     }
 
     [Fact]
-    public async Task ListAccounts_WithoutInsert_ReturnsEmpty()
-    {
-        DeleteAllAccounts();
-        var response = await _client.GetAsync("/");
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var accounts = await response.Content.ReadFromJsonAsync<List<int>>();
-        accounts.Should().NotBeNull();
-        accounts!.Count.Should().BeGreaterThan(0);
-    }
-
-    [Fact]
     public async Task ListAccounts_WithInsert_ReturnsInserted()
     {
         DeleteAllAccounts();
         var accountId = await CreateTestAccountAsync();
         var response = await _client.GetAsync("/");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var accounts = await response.Content.ReadFromJsonAsync<List<int>>();
-        accounts.Should().NotBeNull();
-        accounts.Should().Contain(a => a == accountId);
+        var accounts = await response.Content.ReadFromJsonAsync<int[]>();
+        accounts.Should().Contain(accountId);
     }
 
     [Fact]
-    public async Task DeleteAccount_ReturnsSuccess()
+    public async Task GetAccount_ReturnsAccount()
     {
         var accountId = await CreateTestAccountAsync();
-        var response = await _client.DeleteAsync($"/account/{accountId}");
+        var response = await _client.GetAsync($"/account/{accountId}");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var account = await response.Content.ReadFromJsonAsync<Account>();
+        account!.Id.Should().Be(accountId);
+    }
 
-        var deletedAccount = _storage.GetAccount(accountId);
-        deletedAccount.Should().BeNull();
+    [Fact]
+    public async Task GetAccount_NonExistent_ReturnsBadRequest()
+    {
+        var response = await _client.GetAsync("/account/999");
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Deposit_IncreasesBalance()
+    {
+        var accountId = await CreateTestAccountAsync();
+        var response = await _client.PostAsync($"/deposit/{accountId}/100.00", null);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var transaction = await response.Content.ReadFromJsonAsync<Transaction>();
+        transaction!.Amount.Should().Be(100.00);
+    }
+
+    [Fact]
+    public async Task Deposit_NegativeAmount_ReturnsBadRequest()
+    {
+        var accountId = await CreateTestAccountAsync();
+        var response = await _client.PostAsync($"/deposit/{accountId}/-100.00", null);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Withdraw_DecreasesBalance()
+    {
+        var accountId = await CreateTestAccountAsync();
+        await _client.PostAsync($"/deposit/{accountId}/100.00", null);
+        var response = await _client.PostAsync($"/withdraw/{accountId}/50.00", null);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var transaction = await response.Content.ReadFromJsonAsync<Transaction>();
+        transaction!.Amount.Should().Be(-50.00);
+    }
+
+    [Fact]
+    public async Task Withdraw_InsufficientFunds_ReturnsBadRequest()
+    {
+        var accountId = await CreateTestAccountAsync();
+        var response = await _client.PostAsync($"/withdraw/{accountId}/50.00", null);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }

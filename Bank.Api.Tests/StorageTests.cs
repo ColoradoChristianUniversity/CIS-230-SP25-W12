@@ -1,14 +1,13 @@
 ﻿using System.Text.Json;
 using Bank.Logic;
 using Bank.Logic.Abstractions;
-using Bank.Api.Logic;
 
 namespace Bank.Api.Tests;
 
 public class StorageTests : IDisposable
 {
     private readonly string testFilePath = Path.Combine(AppContext.BaseDirectory, "test_store.json");
-    private readonly Storage storage;
+    private readonly Bank.Api.Logic.Storage storage; // Fully qualify Storage
 
     public StorageTests()
     {
@@ -16,7 +15,7 @@ public class StorageTests : IDisposable
         {
             File.Delete(testFilePath);
         }
-        storage = new Storage(testFilePath);
+        storage = new Bank.Api.Logic.Storage(testFilePath); // Fully qualify Storage
     }
 
     public void Dispose()
@@ -75,7 +74,7 @@ public class StorageTests : IDisposable
     public void Storage_PersistsDataBetweenInstances()
     {
         var account = storage.AddAccount();
-        var newStorage = new Storage(testFilePath);
+        var newStorage = new Bank.Api.Logic.Storage(testFilePath); // Fully qualify Storage
         Assert.NotNull(newStorage.GetAccount(account.Id));
     }
 }

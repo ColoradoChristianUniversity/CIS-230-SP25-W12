@@ -15,7 +15,7 @@ public class Storage
 
         if (!File.Exists(path))
         {
-            File.WriteAllText(path, "[]"); // Ensures an empty JSON array instead of just creating the file
+            File.WriteAllText(path, "[]");
         }
 
         try
@@ -70,7 +70,7 @@ public class Storage
         SaveChanges();
     }
 
-    private void SaveChanges()
+    public void SaveChanges() // Changed from private to public
     {
         var json = JsonSerializer.Serialize(accounts);
         File.WriteAllText(path, json);
