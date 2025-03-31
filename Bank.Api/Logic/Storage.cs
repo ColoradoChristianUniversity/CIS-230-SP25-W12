@@ -5,74 +5,57 @@ namespace Bank.Api.Logic;
 
 public class Storage
 {
-    private const int firstId = 1;
-    private readonly string path;
-    private readonly List<Account> accounts;
+    private readonly string _filePath;
+    private readonly Dictionary<int, Account> _accounts;
 
-    public Storage(string? fileName = "store.json")
+    public Storage(string filePath)
     {
-        path = Path.Combine(AppContext.BaseDirectory, fileName ?? "store.json");
+        _filePath = filePath;
+        _accounts = File.Exists(filePath)
+            ? JsonSerializer.Deserialize<Dictionary<int, Account>>(File.ReadAllText(filePath))
+            ?? []
+            : [];
+    }
 
-        if (!File.Exists(path))
-        {
-            File.WriteAllText(path, "[]");
-        }
-
-        try
-        {
-            accounts = JsonSerializer.Deserialize<List<Account>>(File.ReadAllText(path)) ?? [];
-        }
-        catch (JsonException)
-        {
-            accounts = [];
-        }
+    public Account? GetAccount(int accountId)
+    {
+        _accounts.TryGetValue(accountId, out var account);
+        return account;
     }
 
     public int[] ListAccounts()
     {
-        return accounts.Select(a => a.Id).ToArray();
+        return [.. _accounts.Keys];
     }
 
-    public Account AddAccount()
+    public void AddAccount(Account account)
     {
-        var newAccount = new Account
-        {
-            Id = GenerateNewAccountId(),
-            Settings = new()
-        };
-
-        accounts.Add(newAccount);
+        _accounts.Add(account.Id, account);
         SaveChanges();
-        return newAccount;
-
-        int GenerateNewAccountId()
-        {
-            if (accounts.Count == 0)
-            {
-                return firstId;
-            }
-
-            return accounts.Max(a => a.Id) + 1;
-        }
     }
 
-    public Account? GetAccount(int id) => accounts.FirstOrDefault(a => a.Id == id);
-
-    public void RemoveAccount(int id)
+    public void RemoveAccount(int accountId)
     {
-        var account = GetAccount(id);
+        _accounts.Remove(accountId);
+        SaveChanges();
+    }
+
+    public void AddTransaction(int accountId, Transaction transaction)
+    {
+        var account = GetAccount(accountId);
         if (account == null)
         {
-            return;
+            throw new ArgumentException("Account not found.");
         }
-
-        accounts.Remove(account);
+        if (!account.TryAddTransaction(transaction))
+        {
+            throw new InvalidOperationException("Transaction rejected.");
+        }
         SaveChanges();
     }
 
-    public void SaveChanges() // Changed from private to public
+    private void SaveChanges()
     {
-        var json = JsonSerializer.Serialize(accounts);
-        File.WriteAllText(path, json);
+        File.WriteAllText(_filePath, System.Text.Json.JsonSerializer.Serialize(_accounts));
     }
 }

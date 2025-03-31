@@ -14,27 +14,7 @@ public class EndpointHandler : IEndpointHandler
 
     public async Task<IResult> AddTransactionAsync(int accountId, string type, double amount)
     {
-        return await WrapperAsync(Do);
-
-        IResult Do()
-        {
-            if (!Enum.TryParse<TransactionType>(type, true, out var transactionType))
-                return Results.BadRequest("Invalid transaction type.");
-
-            var account = Storage.GetAccount(accountId) ?? throw new ArgumentException("Account not found.");
-            var transaction = new Transaction
-            {
-                Type = transactionType,
-                Amount = amount,
-                Date = DateTime.UtcNow
-            };
-
-            if (!account.TryAddTransaction(transaction))
-                return Results.BadRequest("Transaction rejected by account rules.");
-
-            Storage.SaveChanges(); // This will be fixed in Step 2
-            return Results.Ok(transaction);
-        }
+        throw new NotImplementedException();
     }
 
     public async Task<IResult> CreateAccountAsync()
@@ -53,6 +33,12 @@ public class EndpointHandler : IEndpointHandler
 
         IResult Do()
         {
+            var account = Storage.GetAccount(accountId);
+            if (account == null)
+            {
+                return Results.NotFound();
+            }
+
             Storage.RemoveAccount(accountId);
             return Results.Ok();
         }
@@ -60,56 +46,22 @@ public class EndpointHandler : IEndpointHandler
 
     public async Task<IResult> DepositAsync(int accountId, double amount)
     {
-        return await WrapperAsync(Do);
-
-        IResult Do()
-        {
-            var account = Storage.GetAccount(accountId) ?? throw new ArgumentException("Account not found.");
-            var transaction = new Transaction
-            {
-                Type = TransactionType.Deposit,
-                Amount = amount,
-                Date = DateTime.UtcNow
-            };
-
-            if (!account.TryAddTransaction(transaction))
-                return Results.BadRequest("Deposit rejected (e.g., zero or negative amount).");
-
-            Storage.SaveChanges();
-            return Results.Ok(transaction);
-        }
+        throw new NotImplementedException();
     }
 
     public async Task<IResult> GetAccountAsync(int accountId)
     {
-        return await WrapperAsync(Do);
-
-        IResult Do()
-        {
-            var account = Storage.GetAccount(accountId) ?? throw new ArgumentException("Account not found.");
-            return Results.Ok(account);
-        }
+        throw new NotImplementedException();
     }
 
     public async Task<IResult> GetDefaultSettingsAsync()
     {
-        return await WrapperAsync(Do);
-
-        IResult Do()
-        {
-            return Results.Ok(new AccountSettings());
-        }
+        throw new NotImplementedException();
     }
 
     public async Task<IResult> GetTransactionHistoryAsync(int accountId)
     {
-        return await WrapperAsync(Do);
-
-        IResult Do()
-        {
-            var account = Storage.GetAccount(accountId) ?? throw new ArgumentException("Account not found.");
-            return Results.Ok(account.GetTransactions());
-        }
+        throw new NotImplementedException();
     }
 
     public async Task<IResult> ListAccountsAsync()
@@ -118,31 +70,14 @@ public class EndpointHandler : IEndpointHandler
 
         IResult Do()
         {
-            var accounts = Storage.ListAccounts();
+            var accounts = Storage.GetAllAccounts();
             return Results.Ok(accounts);
         }
     }
 
     public async Task<IResult> WithdrawAsync(int accountId, double amount)
     {
-        return await WrapperAsync(Do);
-
-        IResult Do()
-        {
-            var account = Storage.GetAccount(accountId) ?? throw new ArgumentException("Account not found.");
-            var transaction = new Transaction
-            {
-                Type = TransactionType.Withdraw,
-                Amount = -amount,
-                Date = DateTime.UtcNow
-            };
-
-            if (!account.TryAddTransaction(transaction))
-                return Results.BadRequest("Withdrawal rejected (e.g., insufficient funds or zero amount).");
-
-            Storage.SaveChanges();
-            return Results.Ok(transaction);
-        }
+        throw new NotImplementedException();
     }
 
     private static async Task<IResult> WrapperAsync(Func<IResult> action)
@@ -151,13 +86,32 @@ public class EndpointHandler : IEndpointHandler
         {
             return await Task.Run(action);
         }
-        catch (ArgumentException ex)
+        catch (ArgumentException)
         {
-            return Results.BadRequest(ex.Message);
+            throw;
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            return Results.Conflict(ex.Message);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"An error occurred: {ex.Message}");
+        }
+    }
+    private static async Task<IResult> WrapperAsync(Func<Task<IResult>> action)
+    {
+        try
+        {
+            return await action();
+        }
+        catch (ArgumentException)
+        {
+            throw;
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
