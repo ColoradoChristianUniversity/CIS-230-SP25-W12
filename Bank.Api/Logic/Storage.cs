@@ -20,11 +20,11 @@ public class Storage
 
         try
         {
-            accounts = JsonSerializer.Deserialize<List<Account>>(File.ReadAllText(path)) ?? [];
+            accounts = JsonSerializer.Deserialize<List<Account>>(File.ReadAllText(path)) ?? new List<Account>();
         }
         catch (JsonException)
         {
-            accounts = [];
+            accounts = new List<Account>();
         }
     }
 
@@ -70,9 +70,62 @@ public class Storage
         SaveChanges();
     }
 
+    public void AddTransaction(int accountId, string type, double amount)
+    {
+        var account = GetAccount(accountId);
+        if (account == null)
+        {
+            throw new ArgumentException("Account not found.");
+        }
+
+        // Ensure the Transactions list is initialized
+        if (account.Transactions == null)
+        {
+            account.Transactions = new List<Bank.Logic.Abstractions.ITransaction>();
+        }
+
+        var transaction = new Transaction
+        {
+            Date = DateTime.Now
+        };
+        transaction.Type = Enum.Parse<TransactionType>(type, true);
+        transaction.Amount = Utilities.InidicatesNegativeAmount(transaction.Type) ? -Math.Abs(amount) : Math.Abs(amount);
+
+        account.Transactions.Add(transaction);
+        account.Balance = account.GetBalance();
+        SaveChanges();
+    }
+
     private void SaveChanges()
     {
         var json = JsonSerializer.Serialize(accounts);
         File.WriteAllText(path, json);
     }
+
+    public void ClearAllAccounts()
+    {
+        accounts.Clear();
+        SaveChanges();
+    }
+
+    public object GetDefaultSettings()
+    {
+        return new { Setting1 = "Default1", Setting2 = "Default2" };
+    }
+
+    public IEnumerable<Transaction> GetTransactionHistory(int accountId)
+    {
+        var account = GetAccount(accountId);
+        if (account == null || account.Transactions == null)
+        {
+            return Enumerable.Empty<Transaction>();
+        }
+
+        return account.Transactions.OfType<Transaction>();
+    }
+    public IEnumerable<int> GetAllAccounts()
+    {
+        return accounts.Select(a => a.Id);
+    }
 }
+

@@ -4,16 +4,10 @@ namespace Bank.Logic;
 
 public class Account : IAccount
 {
-    private AccountSettings _settings = default!;
-    public AccountSettings Settings
-    {
-        get => _settings;
-        set => _settings = value;
-    }
-
-    public int Id { get; set; } = default;
-
-    public List<ITransaction> Transactions { get; set; } = [];
+    public int Id { get; set; }
+    public double Balance { get; set; }
+    public List<ITransaction> Transactions { get; set; } = new List<ITransaction>();
+    public AccountSettings Settings { get; set; }
 
     public double GetBalance() { return Transactions.Sum(t => t.Amount); }
 
@@ -68,7 +62,7 @@ public class Account : IAccount
             return false;
         }
 
-        Transactions.Add(transaction);
+        Transactions.Add((Transaction)transaction);
         return true;
     }
 }

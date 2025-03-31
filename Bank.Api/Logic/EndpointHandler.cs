@@ -11,8 +11,31 @@ public class EndpointHandler : IEndpointHandler
 
     public Task<IResult> AddTransactionAsync(int accountId, string type, double amount)
     {
-        throw new NotImplementedException();
+        return WrapperAsync(Do);
+
+        IResult Do()
+        {
+            if (amount <= 0)
+            {
+                throw new ArgumentException("Transaction amount must be greater than zero.");
+            }
+
+            if (type != "deposit" && type != "withdraw")
+            {
+                throw new ArgumentException("Transaction type must be either 'deposit' or 'withdraw'.");
+            }
+
+            var account = Storage.GetAccount(accountId);
+            if (account == null)
+            {
+                throw new InvalidOperationException("Account not found.");
+            }
+
+            Storage.AddTransaction(accountId, type, amount);
+            return Results.Ok();
+        }
     }
+
 
     public async Task<IResult> CreateAccountAsync()
     {
@@ -30,6 +53,12 @@ public class EndpointHandler : IEndpointHandler
 
         IResult Do()
         {
+            var account = Storage.GetAccount(accountId);
+            if (account == null)
+            {
+                return Results.NotFound();
+            }
+
             Storage.RemoveAccount(accountId);
             return Results.Ok();
         }
@@ -37,22 +66,65 @@ public class EndpointHandler : IEndpointHandler
 
     public async Task<IResult> DepositAsync(int accountId, double amount)
     {
-        throw new NotImplementedException();
+        return await WrapperAsync(Do);
+
+        IResult Do()
+        {
+            if (amount <= 0)
+            {
+                throw new ArgumentException("Transaction amount must be greater than zero.");
+            }
+
+            var account = Storage.GetAccount(accountId);
+            if (account == null)
+            {
+                throw new ArgumentException("Account not found.");
+            }
+
+            Storage.AddTransaction(accountId, "deposit", amount);
+            return Results.Ok();
+        }
     }
 
     public async Task<IResult> GetAccountAsync(int accountId)
     {
-        throw new NotImplementedException();
+        return await WrapperAsync(Do);
+
+        IResult Do()
+        {
+            var account = Storage.GetAccount(accountId);
+            if (account == null)
+            {
+                return Results.NotFound();
+            }
+            return Results.Ok(account);
+        }
     }
 
     public async Task<IResult> GetDefaultSettingsAsync()
     {
-        throw new NotImplementedException();
+        return await WrapperAsync(Do);
+
+        IResult Do()
+        {
+            var settings = Storage.GetDefaultSettings();
+            return Results.Ok(settings);
+        }
     }
 
     public async Task<IResult> GetTransactionHistoryAsync(int accountId)
     {
-        throw new NotImplementedException();
+        return await WrapperAsync(Do);
+
+        IResult Do()
+        {
+            var transactions = Storage.GetTransactionHistory(accountId);
+            if (transactions == null || !transactions.Any())
+            {
+                return Results.NotFound();
+            }
+            return Results.Ok(transactions);
+        }
     }
 
     public async Task<IResult> ListAccountsAsync()
@@ -61,14 +133,37 @@ public class EndpointHandler : IEndpointHandler
 
         IResult Do()
         {
-            var accounts = Storage.ListAccounts();
+            var accounts = Storage.GetAllAccounts();
             return Results.Ok(accounts);
         }
     }
 
     public async Task<IResult> WithdrawAsync(int accountId, double amount)
     {
-        throw new NotImplementedException();
+        return await WrapperAsync(Do);
+
+        IResult Do()
+        {
+            if (amount <= 0)
+            {
+                throw new ArgumentException("Withdrawal amount must be greater than zero.");
+            }
+
+            var account = Storage.GetAccount(accountId);
+            if (account == null)
+            {
+                return Results.NotFound();
+            }
+
+            if (account.Balance < amount)
+            {
+                throw new InvalidOperationException("Insufficient funds.");
+            }
+
+            account.Balance -= amount;
+            Storage.AddTransaction(accountId, "withdraw", amount);
+            return Results.Ok();
+        }
     }
 
     private static async Task<IResult> WrapperAsync(Func<IResult> action)
@@ -77,13 +172,32 @@ public class EndpointHandler : IEndpointHandler
         {
             return await Task.Run(action);
         }
-        catch (ArgumentException ex)
+        catch (ArgumentException)
         {
-            return Results.BadRequest(ex.Message);
+            throw;
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            return Results.Conflict(ex.Message);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"An error occurred: {ex.Message}");
+        }
+    }
+    private static async Task<IResult> WrapperAsync(Func<Task<IResult>> action)
+    {
+        try
+        {
+            return await action();
+        }
+        catch (ArgumentException)
+        {
+            throw;
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
