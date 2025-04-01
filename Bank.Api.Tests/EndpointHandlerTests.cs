@@ -1,291 +1,221 @@
 using Bank.Api.Logic;
 using Bank.Logic;
-using Bank.Logic.Abstractions;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Http;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 
 namespace Bank.Api.Tests;
 
 public class EndpointHandlerTests : IDisposable
 {
-    private readonly EndpointHandler handler = new("Test.json");
+    private readonly EndpointHandler handler;
+    private readonly string testFile = "Test.json";
+
+    public EndpointHandlerTests()
+    {
+        if (File.Exists(testFile)) File.Delete(testFile);
+        handler = new EndpointHandler(new Storage(testFile));
+    }
 
     public void Dispose()
     {
-        if (File.Exists("Test.json"))
-        {
-            File.Delete("Test.json");
-        }
+        if (File.Exists(testFile)) File.Delete(testFile);
     }
 
     [Fact]
-    public async Task CreateAccountAsync_ShouldReturnOkResultWithValidAccount()
+    public async Task CreateAccountAsync_ShouldReturnOk()
     {
-        // Act
         var result = await handler.CreateAccountAsync();
+        result.Should().BeOfType<Ok<Account>>();
 
-        // Assert
-        result.Should().BeOfType<Ok<Account>>("because the account creation should succeed");
         var account = (result as Ok<Account>)!.Value;
-        account.Should().NotBeNull("because a valid account should be created");
+        account.Should().NotBeNull();
     }
 
     [Fact]
-    public async Task DeleteAccountAsync_ShouldDeleteAccountSuccessfully()
+    public async Task DeleteAccountAsync_ShouldRemoveAccount()
     {
-        // Arrange
-        var account = await handler.CreateAccountAsync();
-        var accountId = (account as Ok<Account>)!.Value.Id;
+        var result = await handler.CreateAccountAsync();
+        result.Should().BeOfType<Ok<Account>>();
+        var accountId = ((Ok<Account>)result).Value!.Id;
 
-        // Act
-        var result = await handler.DeleteAccountAsync(accountId);
+        var deleteResult = await handler.DeleteAccountAsync(accountId);
+        deleteResult.Should().BeOfType<Ok>();
 
-        // Assert
-        result.Should().BeOfType<Ok>("because the account should be deleted successfully");
-        handler.Storage.GetAccount(accountId).Should().BeNull("because the account should no longer exist in storage");
+        var notFound = await handler.GetAccountAsync(accountId);
+        notFound.Should().BeOfType<NotFound<string>>();
     }
 
     [Fact]
-    public async Task GetAccountAsync_ShouldReturnAccount_WhenAccountExists()
+    public async Task GetAccountAsync_ShouldReturnOkIfExists()
     {
-        // Arrange
-        var account = await handler.CreateAccountAsync();
-        var accountId = (account as Ok<Account>)!.Value.Id;
+        var result = await handler.CreateAccountAsync();
+        result.Should().BeOfType<Ok<Account>>();
+        var accountId = ((Ok<Account>)result).Value!.Id;
 
-        // Act
-        var result = await handler.GetAccountAsync(accountId);
+        var getResult = await handler.GetAccountAsync(accountId);
+        getResult.Should().BeOfType<Ok<Account>>();
 
-        // Assert
-        result.Should().BeOfType<Ok<Account>>("because the account exists");
-        var retrievedAccount = (result as Ok<Account>)!.Value;
-        retrievedAccount.Should().NotBeNull("because the account should be retrievable");
-        retrievedAccount.Id.Should().Be(accountId, "because the retrieved account ID should match the created account ID");
+        var account = ((Ok<Account>)getResult).Value;
+        account.Should().NotBeNull();
+        account.Id.Should().Be(accountId);
     }
 
     [Fact]
-    public async Task GetAccountAsync_ShouldReturnNotFound_WhenAccountDoesNotExist()
+    public async Task GetAccountAsync_ShouldReturnNotFound_IfMissing()
     {
-        // Act
         var result = await handler.GetAccountAsync(999);
-
-        // Assert
-        result.Should().BeOfType<NotFound<string>>("because the account does not exist");
+        result.Should().BeOfType<NotFound<string>>();
     }
 
     [Fact]
     public async Task ListAccountsAsync_ShouldReturnAllAccounts()
     {
-        // Arrange
         await handler.CreateAccountAsync();
         await handler.CreateAccountAsync();
 
-        // Act
         var result = await handler.ListAccountsAsync();
+        result.Should().BeOfType<Ok<int[]>>();
 
-        // Assert
-        result.Should().BeOfType<Ok<int[]>>("because the accounts should be listed successfully");
-        var accounts = (result as Ok<int[]>)!.Value;
-        accounts.Should().NotBeNull("because there should be accounts in the list");
-        accounts.Should().HaveCount(2, "because two accounts were created");
+        var ids = ((Ok<int[]>)result).Value;
+        ids.Should().HaveCount(2);
     }
 
     [Fact]
-    public async Task AddTransactionAsync_ShouldReturnOk_WhenTransactionIsValid()
+    public async Task AddTransactionAsync_ShouldReturnOk()
     {
-        // Arrange
-        var account = await handler.CreateAccountAsync();
-        var accountId = (account as Ok<Account>)!.Value.Id;
+        var result = await handler.CreateAccountAsync();
+        result.Should().BeOfType<Ok<Account>>();
+        var accountId = ((Ok<Account>)result).Value!.Id;
 
-        // Act
-        var result = await handler.AddTransactionAsync(accountId, "Deposit", 100);
-
-        // Assert
-        result.Should().BeOfType<Ok>("because the transaction is valid and should succeed");
+        var txResult = await handler.AddTransactionAsync(accountId, "Deposit", 100);
+        txResult.Should().BeOfType<Ok>();
     }
 
     [Fact]
-    public async Task AddTransactionAsync_ShouldReturnBadRequest_WhenTransactionTypeIsInvalid()
+    public async Task AddTransactionAsync_ShouldReturnBadRequest_IfInvalidType()
     {
-        // Arrange
-        var account = await handler.CreateAccountAsync();
-        var accountId = (account as Ok<Account>)!.Value.Id;
+        var result = await handler.CreateAccountAsync();
+        result.Should().BeOfType<Ok<Account>>();
+        var accountId = ((Ok<Account>)result).Value!.Id;
 
-        // Act
-        var result = await handler.AddTransactionAsync(accountId, "InvalidType", 100);
-
-        // Assert
-        result.Should().BeOfType<BadRequest<string>>("because the transaction type is invalid");
+        var txResult = await handler.AddTransactionAsync(accountId, "InvalidType", 100);
+        txResult.Should().BeOfType<BadRequest<string>>();
     }
 
     [Fact]
-    public async Task AddTransactionAsync_ShouldReturnNotFound_WhenAccountDoesNotExist()
+    public async Task AddTransactionAsync_ShouldReturnNotFound_IfAccountMissing()
     {
-        // Act
         var result = await handler.AddTransactionAsync(999, "Deposit", 100);
-
-        // Assert
-        result.Should().BeOfType<NotFound<string>>("because the account does not exist");
+        result.Should().BeOfType<NotFound<string>>();
     }
 
-        [Fact]
-    public async Task WithdrawAsync_ShouldReturnNotFound_WhenAccountDoesNoteExist()
+    [Fact]
+    public async Task WithdrawAsync_ShouldReturnNotFound_IfAccountMissing()
     {
-        // Act
         var result = await handler.WithdrawAsync(999, 100);
-
-        // Assert
-        result.Should().BeOfType<NotFound<string>>("because the account does not exist"); 
+        result.Should().BeOfType<NotFound<string>>();
     }
 
     [Fact]
-    public async Task WithdrawAsync_ShouldReturnBadRequest_WhenInsufficientFunds()
+    public async Task WithdrawAsync_ShouldReturnBadRequest_IfInsufficientFunds()
     {
-        // Arrange
-        var account = await handler.CreateAccountAsync();
-        var accountId = (account as Ok<Account>)!.Value.Id;
+        var result = await handler.CreateAccountAsync();
+        result.Should().BeOfType<Ok<Account>>();
+        var accountId = ((Ok<Account>)result).Value!.Id;
 
-        // Act 
-        var result = await handler.WithdrawAsync(accountId, 100);
-
-        // Assert
-        result.Should().BeOfType<BadRequest<string>>("because the account does not have sufficient funds");
+        var withdrawal = await handler.WithdrawAsync(accountId, 100);
+        withdrawal.Should().BeOfType<BadRequest<string>>();
     }
 
     [Fact]
-    public async Task WithdrawAsync_ShouldReturnOk_WhenSufficientFunds()
+    public async Task WithdrawAsync_ShouldReturnOk_IfSufficientFunds()
     {
-        // Arrange
-        var account = await handler.CreateAccountAsync();
-        var accountId = (account as Ok<Account>)!.Value.Id;
-        await handler.AddTransactionAsync(accountId, "Deposit", 200);
+        var result = await handler.CreateAccountAsync();
+        result.Should().BeOfType<Ok<Account>>();
+        var accountId = ((Ok<Account>)result).Value!.Id;
 
-        // Act
-        var result = await handler.WithdrawAsync(accountId, -100);
-
-        // Assert
-        result.Should().BeOfType<Ok>("because the account has sufficient funds");
+        await handler.DepositAsync(accountId, 200);
+        var withdrawal = await handler.WithdrawAsync(accountId, 100);
+        withdrawal.Should().BeOfType<Ok>();
     }
 
     [Fact]
-    public async Task DepositAsync_ShouldReturnNotFound_WhenAccountDoesNotExist()
+    public async Task DepositAsync_ShouldReturnNotFound_IfMissing()
     {
-        // Act
         var result = await handler.DepositAsync(999, 100);
-
-        // Assert
-        result.Should().BeOfType<NotFound<string>>("because the account does not exist"); 
+        result.Should().BeOfType<NotFound<string>>();
     }
 
     [Fact]
-    public async Task DepositAsync_ShouldReturnOK_WhenAccountExists()
+    public async Task DepositAsync_ShouldReturnOk_IfExists()
     {
-        // Arrange
-        var account = await handler.CreateAccountAsync();
-        var accountId = (account as Ok<Account>)!.Value.Id;
+        var result = await handler.CreateAccountAsync();
+        result.Should().BeOfType<Ok<Account>>();
+        var accountId = ((Ok<Account>)result).Value!.Id;
 
-        // Act
-        var result = await handler.DepositAsync(accountId, 100);
-
-        // Assert
-        result.Should().BeOfType<Ok>("because the account exists");
+        var deposit = await handler.DepositAsync(accountId, 100);
+        deposit.Should().BeOfType<Ok>();
     }
 
     [Fact]
-    public async Task GetTransactionHistoryAsync_ShouldReturnTransactions_WhenAccountExists()
+    public async Task GetTransactionHistoryAsync_ShouldReturnJson_IfExists()
     {
-        // Arrange
-        var account = await handler.CreateAccountAsync();
-        var accountId = (account as Ok<Account>)!.Value.Id;
+        var result = await handler.CreateAccountAsync();
+        result.Should().BeOfType<Ok<Account>>();
+        var accountId = ((Ok<Account>)result).Value!.Id;
+
         await handler.AddTransactionAsync(accountId, "Deposit", 100);
+        var history = await handler.GetTransactionHistoryAsync(accountId);
 
-        // Act
-        var result = await handler.GetTransactionHistoryAsync(accountId);
-
-        // Assert
-        result.Should().BeOfType<JsonHttpResult<IReadOnlyList<ITransaction>>>("because the account exists and has transactions");
-        var transactions = (result as JsonHttpResult<IReadOnlyList<ITransaction>>)!.Value;
-        transactions.Should().NotBeNull("because there should be transactions for the account");
-        transactions.Should().HaveCount(1, "because one transaction was added");
+        history.Should().BeOfType<JsonHttpResult<IReadOnlyList<Transaction>>>();
+        var transactions = ((JsonHttpResult<IReadOnlyList<Transaction>>)history).Value;
+        transactions.Should().HaveCount(1);
     }
 
     [Fact]
-    public async Task GetTransactionHistoryAsync_ShouldReturnNotFound_WhenAccountDoesNotExist()
+    public async Task GetTransactionHistoryAsync_ShouldReturnNotFound_IfMissing()
     {
-        // Act
         var result = await handler.GetTransactionHistoryAsync(999);
-
-        // Assert
-        result.Should().BeOfType<NotFound<string>>("because the account does not exist");
+        result.Should().BeOfType<NotFound<string>>();
     }
 
     [Fact]
-    public async Task GetDefaultSettingsAsync_ShouldThrowNotImplementedException()
+    public void GetDefaultSettings_ShouldReturnSettings()
     {
-        // Act
-        Func<Task> act = async () => await handler.GetDefaultSettingsAsync();
+        var result = handler.GetDefaultSettings();
+        result.Should().BeOfType<Ok<AccountSettings>>();
 
-        // Assert
-        await act.Should().ThrowAsync<NotImplementedException>("because the method is not implemented");
-    }
-    
-    [Fact]
-    public async Task WrapperAsync_ShouldReturnOk_WhenActionSucceeds()
-    {
-        // Arrange
-        Func<IResult> action = () => Results.Ok("Success");
-
-        // Act
-        var result = await EndpointHandler.WrapperAsync(action);
-
-        // Assert
-        result.Should().BeOfType<Ok<string>>("because the action succeeded");
-        var value = (result as Ok<string>)!.Value;
-        value.Should().Be("Success", "because the action returned 'Success'");
+        var settings = ((Ok<AccountSettings>)result).Value;
+        settings.Should().NotBeNull();
     }
 
     [Fact]
-    public async Task WrapperAsync_ShouldReturnBadRequest_WhenArgumentExceptionIsThrown()
+    public async Task WrapperAsync_ShouldReturnOk_IfSuccess()
     {
-        // Arrange
-        Func<IResult> action = () => throw new ArgumentException("Invalid argument");
-
-        // Act
-        var result = await EndpointHandler.WrapperAsync(action);
-
-        // Assert
-        result.Should().BeOfType<BadRequest<string>>("because an ArgumentException was thrown");
-        var value = (result as BadRequest<string>)!.Value;
-        value.Should().Be("Invalid argument", "because the exception message should be returned");
+        var result = await EndpointHandler.WrapperAsync(() => Results.Ok("yay"));
+        result.Should().BeOfType<Ok<string>>().Which.Value.Should().Be("yay");
     }
 
     [Fact]
-    public async Task WrapperAsync_ShouldReturnConflict_WhenInvalidOperationExceptionIsThrown()
+    public async Task WrapperAsync_ShouldReturnBadRequest_IfArgumentException()
     {
-        // Arrange
-        Func<IResult> action = () => throw new InvalidOperationException("Conflict occurred");
-
-        // Act
-        var result = await EndpointHandler.WrapperAsync(action);
-
-        // Assert
-        result.Should().BeOfType<Conflict<string>>("because an InvalidOperationException was thrown");
-        var value = (result as Conflict<string>)!.Value;
-        value.Should().Be("Conflict occurred", "because the exception message should be returned");
+        var result = await EndpointHandler.WrapperAsync(() => throw new ArgumentException("bad"));
+        result.Should().BeOfType<BadRequest<string>>().Which.Value.Should().Be("bad");
     }
 
     [Fact]
-    public async Task WrapperAsync_ShouldReturnProblem_WhenGenericExceptionIsThrown()
+    public async Task WrapperAsync_ShouldReturnConflict_IfInvalidOp()
     {
-        // Arrange
-        Func<IResult> action = () => throw new Exception("Unexpected error");
+        var result = await EndpointHandler.WrapperAsync(() => throw new InvalidOperationException("fail"));
+        result.Should().BeOfType<Conflict<string>>().Which.Value.Should().Be("fail");
+    }
 
-        // Act
-        var result = await EndpointHandler.WrapperAsync(action);
-
-        // Assert
-        result.Should().BeOfType<ProblemHttpResult>("because a generic exception was thrown");
-        var problemDetails = (result as ProblemHttpResult)!.ProblemDetails;
-        problemDetails.Detail.Should().Be("An error occurred: Unexpected error", "because the exception message should be included in the problem details");
+    [Fact]
+    public async Task WrapperAsync_ShouldReturnProblem_IfUnhandled()
+    {
+        var result = await EndpointHandler.WrapperAsync(() => throw new Exception("boom"));
+        result.Should().BeOfType<ProblemHttpResult>();
+        ((ProblemHttpResult)result).ProblemDetails.Detail.Should().Contain("boom");
     }
 }

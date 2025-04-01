@@ -4,7 +4,7 @@
 
 public enum TransactionType
 {
-    Withdraw,
+    Withdrawal,
     Deposit,
     Fee_Overdraft,
     Fee_Management,

@@ -2,35 +2,30 @@ using Bank.Logic;
 
 namespace Bank.Api.Logic;
 
-public class EndpointHandler : IEndpointHandler
+public class EndpointHandler(IStorage storage) : IEndpointHandler
 {
-    public Storage Storage { get; }
-
-    public EndpointHandler(string? filePath = null)
-    {
-        Storage = new Storage(filePath ?? "store.json");
-    }
-    // TODO: Added async tag, will this mess everything up?
     public async Task<IResult> AddTransactionAsync(int accountId, string type, double amount)
     {
         return await WrapperAsync(Do);
 
         IResult Do()
         {
-            var account = Storage.GetAccount(accountId);
-
-            if (account == null){
+            if (!storage.TryGetAccount(accountId, out var account))
+            {
                 return Results.NotFound($"Account {accountId} not found");
             }
 
-            // Validate the transaction type
-            if (!Enum.TryParse<TransactionType>(type, true, out var transactionType) || transactionType == TransactionType.Unknown)
+            if (!Enum.TryParse<TransactionType>(type, true, out var transactionType))
             {
                 return Results.BadRequest($"Invalid transaction type: {type}");
             }
 
-            Storage.AddTransaction(account, amount, transactionType);
+            if (!account.TryAddTransaction(amount, transactionType))
+            {
+                return Results.BadRequest($"Transaction of type {transactionType} failed for account {accountId}");
+            }
 
+            storage.UpdateAccount(account);
             return Results.Ok();
         }
     }
@@ -41,7 +36,7 @@ public class EndpointHandler : IEndpointHandler
 
         IResult Do()
         {
-            return Results.Ok(Storage.AddAccount());
+            return Results.Ok(storage.NewAccount());
         }
     }
 
@@ -51,7 +46,7 @@ public class EndpointHandler : IEndpointHandler
 
         IResult Do()
         {
-            Storage.RemoveAccount(accountId);
+            storage.RemoveAccount(accountId);
             return Results.Ok();
         }
     }
@@ -62,16 +57,17 @@ public class EndpointHandler : IEndpointHandler
 
         IResult Do()
         {
-            var account = Storage.GetAccount(accountId);
-            
-            if (account == null){
+            if (!storage.TryGetAccount(accountId, out var account))
+            {
                 return Results.NotFound($"Account {accountId} not found");
             }
 
-            double balance = account.GetBalance();
+            if (!account.TryAddTransaction(amount, TransactionType.Deposit))
+            {
+                return Results.BadRequest($"Deposit of {amount} failed for account {accountId}");
+            }
 
-            Storage.AddTransaction(account, amount, TransactionType.Deposit);
-
+            storage.UpdateAccount(account);
             return Results.Ok();
         }
     }
@@ -82,19 +78,18 @@ public class EndpointHandler : IEndpointHandler
 
         IResult Do()
         {
-        var account = Storage.GetAccount(accountId);
+            if (!storage.TryGetAccount(accountId, out var account))
+            {
+                return Results.NotFound($"Account {accountId} not found");
+            }
 
-        if (account == null){
-            return Results.NotFound($"Account {accountId} not found");
-        }
-
-        return Results.Ok(account);
+            return Results.Ok(account);
         }
     }
 
-    public async Task<IResult> GetDefaultSettingsAsync()
+    public IResult GetDefaultSettings()
     {
-        throw new NotImplementedException();
+        return Results.Ok(new AccountSettings());
     }
 
     public async Task<IResult> GetTransactionHistoryAsync(int accountId)
@@ -103,14 +98,12 @@ public class EndpointHandler : IEndpointHandler
 
         IResult Do()
         {
-            var account = Storage.GetAccount(accountId);
-
-            if (account == null){
+            if (!storage.TryGetAccount(accountId, out var account))
+            {
                 return Results.NotFound($"Account {accountId} not found");
             }
 
-            var transactions = Storage.GetTransactions(accountId);
-
+            var transactions = storage.GetTransactions(accountId);
             return Results.Json(transactions);
         }
     }
@@ -121,7 +114,7 @@ public class EndpointHandler : IEndpointHandler
 
         IResult Do()
         {
-            var accounts = Storage.ListAccounts();
+            var accounts = storage.ListAccounts();
             return Results.Ok(accounts);
         }
     }
@@ -132,22 +125,18 @@ public class EndpointHandler : IEndpointHandler
 
         IResult Do()
         {
-            var account = Storage.GetAccount(accountId);
-            
-            if (account == null){
+            if (!storage.TryGetAccount(accountId, out var account))
+            {
                 return Results.NotFound($"Account {accountId} not found");
             }
 
-            double balance = account.GetBalance();
-
-            // Check sufficient funds
+            var balance = account.GetBalance();
             if (balance < amount)
             {
                 return Results.BadRequest("Insufficient funds");
             }
 
-            Storage.AddTransaction(account, amount, TransactionType.Withdraw);
-
+            account.TryAddTransaction(-Math.Abs(amount), TransactionType.Withdrawal);
             return Results.Ok();
         }
 

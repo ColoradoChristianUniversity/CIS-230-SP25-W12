@@ -1,20 +1,43 @@
-namespace Bank.Logic.Tests
-{
-    public class UtilityTests
-    {
-        [Fact]
-        public void IsNegative_ShouldReturnTrue_ForNegativeTransactionTypes()
-        {
-            Assert.True(TransactionType.Withdraw.InidicatesNegativeAmount(), nameof(TransactionType.Withdraw));
-            Assert.True(TransactionType.Fee_Overdraft.InidicatesNegativeAmount(), nameof(TransactionType.Fee_Overdraft));
-        }
+using FluentAssertions;
+using Xunit;
 
-        [Fact]
-        public void IsNegative_ShouldReturnFalse_ForPositiveTransactionTypes()
-        {
-            Assert.False(TransactionType.Deposit.InidicatesNegativeAmount(), nameof(TransactionType.Deposit));
-            Assert.False(TransactionType.Interest.InidicatesNegativeAmount(), nameof(TransactionType.Interest));
-            Assert.False(TransactionType.Unknown.InidicatesNegativeAmount(), nameof(TransactionType.Unknown));
-        }
+namespace Bank.Logic.Tests;
+
+public class UtilityTests
+{
+    [Theory]
+    [InlineData(TransactionType.Withdrawal)]
+    [InlineData(TransactionType.Fee_Overdraft)]
+    [InlineData(TransactionType.Fee_Management)]
+    public void InidicatesNegativeAmount_ShouldReturnTrue_ForNegativeTypes(TransactionType type)
+    {
+        type.InidicatesNegativeAmount().Should().BeTrue($"{type} should indicate a negative amount");
+    }
+
+    [Theory]
+    [InlineData(TransactionType.Deposit)]
+    [InlineData(TransactionType.Interest)]
+    [InlineData(TransactionType.Unknown)]
+    public void InidicatesNegativeAmount_ShouldReturnFalse_ForNonNegativeTypes(TransactionType type)
+    {
+        type.InidicatesNegativeAmount().Should().BeFalse($"{type} should not indicate a negative amount");
+    }
+
+    [Theory]
+    [InlineData(TransactionType.Fee_Overdraft)]
+    [InlineData(TransactionType.Fee_Management)]
+    [InlineData(TransactionType.Interest)]
+    public void IndicatesSystemType_ShouldReturnTrue_ForSystemTypes(TransactionType type)
+    {
+        type.IndicatesSystemType().Should().BeTrue($"{type} should be considered a system transaction");
+    }
+
+    [Theory]
+    [InlineData(TransactionType.Deposit)]
+    [InlineData(TransactionType.Withdrawal)]
+    [InlineData(TransactionType.Unknown)]
+    public void IndicatesSystemType_ShouldReturnFalse_ForNonSystemTypes(TransactionType type)
+    {
+        type.IndicatesSystemType().Should().BeFalse($"{type} should not be considered a system transaction");
     }
 }

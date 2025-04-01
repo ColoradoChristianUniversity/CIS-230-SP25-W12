@@ -1,8 +1,6 @@
-# Assignment 10
+# Assignment 11
 
 ## Universal Acceptance Criteria
-
-These criteria apply to all assignments, regardless of specific requirements:
 
 1. You must understand every single line of your solution.
 2. Your code must compile and run without errors.
@@ -10,284 +8,142 @@ These criteria apply to all assignments, regardless of specific requirements:
 
 ## Assignment Requirements
 
-1. Implement `EndpointHandler.cs`.
-    - Look for `NotImplementedException` and replace that with your correct code.
-2. Write tests in `EndpointHandlerTests.cs`.
-    - Ensure all tests pass.
-    - Achieve at least `80%` code coverage.
-3. Implement API endpoints in `Program.cs` according to the specification below.
-    - Look for `NotImplementedException` and replace that with your correct code.
-4. Write tests in `MinimalApiTests.cs`.
-    - Ensure all tests pass.
-    - Achieve at least `80%` code coverage.
+1. **Refactor `Storage` to use Dependency Injection (DI):**
+   - Create an interface `IStorage` for the `Storage` class.
+   - Update `EndpointHandler` to depend on `IStorage`.
+   - Register `Storage` as the implementation of `IStorage` in `Program.cs`.
+
+2. **Introduce Middleware:**
+   - Create custom middleware to log HTTP requests and responses.
+   - Log the HTTP method, URL, and response status code.
+   - Add the middleware to the pipeline in `Program.cs`.
+
+3. **Test the Middleware and DI Setup:**
+   - Write unit tests for `EndpointHandler` using `IStorage`.
+   - Write integration tests to verify middleware behavior.
 
 ## Bonus Requirements
 
-1. Improve `EndpointHandlerTests.cs` to achieve at least `95%` code coverage.
+1. Add exception-handling middleware for user-friendly error messages.
+2. Write tests for the exception-handling middleware.
 
-## Information
+---
 
-### Class Diagram of `Bank.API`
+## What is Middleware?
 
-```mermaid
-classDiagram
-    class Program {
-        +Main(string args)
+Middleware processes HTTP requests and responses in the ASP.NET Core pipeline. It enables adding features like logging, authentication, or error handling.
+
+**Why Middleware?**
+- **Separation of Concerns:** Keeps logic clean by isolating cross-cutting concerns.
+- **Reusability:** Middleware can be shared across projects.
+- **Flexibility:** Customize the request/response pipeline.
+
+**Use Case:**
+Let's say you want to log every request and response in your app for debugging purposes. How could you do this with the least complexity? Middleware solves this by allowing you to intercept requests and responses in one place.
+
+**Example:**
+```csharp
+public class LoggingMiddleware
+{
+    private readonly RequestDelegate _next;
+
+    public LoggingMiddleware(RequestDelegate next) => _next = next;
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        Console.WriteLine($"Request: {context.Request.Method} {context.Request.Path}");
+        await _next(context);
+        Console.WriteLine($"Response: {context.Response.StatusCode}");
     }
-
-    class IEndpointHandler {
-        <<interface>>
-        +CreateAccountAsync() IResult
-        +DeleteAccountAsync(int accountId) IResult
-        +GetAccountAsync(int accountId) IResult
-        +GetDefaultSettingsAsync() IResult
-        +WithdrawAsync(int accountId, double amount) IResult
-        +DepositAsync(int accountId, double amount) IResult
-        +GetTransactionHistoryAsync(int accountId) IResult
-        +AddTransactionAsync(int accountId, string type, double amount) IResult
-        +ListAccountsAsync() IResult
-    }
-
-    class EndpointHandler {
-        +Storage Storage
-        +CreateAccountAsync() IResult
-        +DeleteAccountAsync(int accountId) IResult
-        +ListAccountsAsync() IResult
-        -WrapperAsync(Func<IResult> action) IResult
-    }
-
-    class Storage {
-        +ListAccounts() int
-        +AddAccount() Account
-        +GetAccount(int id) Account?
-        +RemoveAccount(int id)
-        -SaveChanges()
-    }
-
-    EndpointHandler ..|> IEndpointHandler
+}
 ```
 
-### API Endpoints
+---
 
-Use the existing endpoints as a guide and pattern to follow. This means using `EndpointHandler` and inside `EndpointHandler` methods, copy the patterns already there illustrating how to do this correctly.
+## What is Dependency Injection?
 
-#### **Create an account** → `POST /account`
+Dependency Injection (DI) supplies dependencies to a class from the outside, improving modularity and testability.
+
+**Why DI?**
+- **Testability:** Enables mocking dependencies for unit tests.
+- **Modularity:** Promotes loose coupling between components.
+- **Flexibility:** Swap implementations without changing dependent classes.
+
+**Use Case:**
+Let's say your app has to use a `Storage` class to manage data, but you also want to replace it with a mock for testing. How could you do this without rewriting your code? DI solves this by allowing you to inject `Storage` or a mock implementation as needed.
+
+**Example:**
+```csharp
+public interface IStorage
+{
+    int[] ListAccounts();
+    Account AddAccount();
+    Account? GetAccount(int id);
+    void RemoveAccount(int id);
+}
+
+public class Storage : IStorage
+{
+    // ...existing code...
+}
+
+// Register in Program.cs
+builder.Services.AddSingleton<IStorage, Storage>();
+```
+
+---
+
+## Steps to Implement
+
+### Dependency Injection (DI)
+
+1. Define `IStorage` for the `Storage` class.
+2. Update `EndpointHandler` to use `IStorage`.
+3. Register `Storage` as `IStorage` in `Program.cs`.
+
+### Middleware
+
+1. Create a middleware class to log HTTP requests and responses.
+2. Use `HttpContext` to access request/response details.
+3. Call the next middleware using `await _next(context)`.
+
+---
+
+## Example Workflows
+
+#### **Dependency Injection**
+
+```mermaid
+sequenceDiagram
+    participant Program
+    participant EndpointHandler
+    participant IStorage
+    participant Storage
+
+    Program->>IStorage: Register Storage as IStorage
+    EndpointHandler->>IStorage: Use IStorage for storage operations
+    IStorage->>Storage: Delegate calls to Storage
+```
+
+#### **Middleware**
 
 ```mermaid
 sequenceDiagram
     participant Client
-    participant API as Minimal API (Program.cs)
-    participant Handler as EndpointHandler
-    participant Storage as Storage
+    participant Middleware
+    participant API
 
-    Client->>API: POST /account
-    API->>Handler: CreateAccountAsync()
-    Handler->>Storage: AddAccount()
-    Storage->>Storage: Generate new account ID
-    Storage->>Storage: SaveChanges()
-    Storage-->>Handler: Returns new Account
-    Handler-->>API: Returns HTTP 200 with Account
-    API-->>Client: HTTP 200 OK (Account JSON)
+    Client->>Middleware: HTTP Request
+    Middleware->>API: Forward Request
+    API->>Middleware: Response
+    Middleware->>Client: Log and Return Response
 ```
 
-Creates a new account with the specified settings.
-```csharp
-var client = new HttpClient();
-var url = "https://api.example.com/account";
-var payload = new Account { Id = 123, Settings = new AccountSettings { OverdraftFee = 25.00 } };
-var response = await client.PostAsJsonAsync(url, payload);
-```
-
-#### **Get account details** → `GET /account/{accountId}`
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API as Minimal API (Program.cs)
-    participant Handler as EndpointHandler
-    participant Storage as Storage
-
-    Client->>API: GET /account
-    API->>Handler: GetAccountAsync(accountId)
-    Handler->>Storage: GetAccount(accountId)
-    Storage-->>Handler: Return Account
-    Handler-->>API: Return HTTP 200 with Account JSON
-    API-->>Client: HTTP 200 OK (Account JSON)
-```
-##### Endpoint Workflow
-
-
-```mermaid
-flowchart TD
-    A(GET /account) -->|Valid accountId| B(Fetch Account from Storage)
-    B -->|Account Found| C(Return HTTP 200 with Account JSON)
-    B -->|Account Not Found| D(Return HTTP 404 Not Found)
-    A -->|Invalid accountId| E(Return HTTP 400 Bad Request)
-```
-
-Retrieves details for the specified account.
-```csharp
-var client = new HttpClient();
-var url = "https://api.example.com/account/123";
-var response = await client.GetAsync(url);
-var account = await response.Content.ReadFromJsonAsync<Account>();
-```
-
-#### **Withdraw funds** → `POST /withdraw/{accountId}/{amount}`
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API as Minimal API (Program.cs)
-    participant Handler as EndpointHandler
-    participant Storage as Storage
-
-    Client->>API: POST /withdraw
-    API->>Handler: WithdrawAsync(accountId, amount)
-    Handler->>Storage: GetAccount(accountId)
-    Storage-->>Handler: Return Account
-    Handler->>Storage: Check Sufficient Funds
-    Storage-->>Handler: Funds Available?
-    Handler-->>API: Return HTTP 200 OK or 400 Bad Request
-    API-->>Client: HTTP 200 OK or 400 Bad Request
-```
-##### Endpoint Workflow
-
-
-```mermaid
-flowchart TD
-    A(POST /withdraw) -->|Valid Input| B(Fetch Account from Storage)
-    B -->|Account Found| C(Check Sufficient Funds)
-    C -->|Sufficient Funds| D(Update Balance & Save Changes)
-    D --> E(Return HTTP 200 OK)
-    C -->|Insufficient Funds| F(Return HTTP 400 Bad Request)
-    B -->|Account Not Found| G(Return HTTP 404 Not Found)
-    A -->|Invalid Input| H(Return HTTP 400 Bad Request)
-```
-
-Withdraws a specified amount from an account if funds allow.
-```csharp
-var client = new HttpClient();
-var url = "https://api.example.com/withdraw/123/50.00";
-var payload = new Transaction { Id = 123, Type = TransactionType.Withdraw, Amount = 50.00 };
-var response = await client.PostAsJsonAsync(url, payload);
-```
-
-#### **Deposit funds** → `POST /deposit/{accountId}/{amount}`
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API as Minimal API (Program.cs)
-    participant Handler as EndpointHandler
-    participant Storage as Storage
-
-    Client->>API: POST /deposit
-    API->>Handler: DepositAsync(accountId, amount)
-    Handler->>Storage: GetAccount(accountId)
-    Storage-->>Handler: Return Account
-    Handler->>Storage: Update Balance & Save Changes
-    Storage-->>Handler: Return Updated Account
-    Handler-->>API: Return HTTP 200 OK
-    API-->>Client: HTTP 200 OK
-```
-##### Endpoint Workflow
-
-
-```mermaid
-flowchart TD
-    A(POST /deposit) -->|Valid Input| B(Fetch Account from Storage)
-    B -->|Account Found| C(Update Balance & Save Changes)
-    C --> D(Return HTTP 200 OK)
-    B -->|Account Not Found| E(Return HTTP 404 Not Found)
-    A -->|Invalid Input| F(Return HTTP 400 Bad Request)
-```
-
-Deposits a specified amount into an account.
-```csharp
-var client = new HttpClient();
-var url = "https://api.example.com/deposit/123/100.00";
-var payload = new Transaction { Id = 123, Type = TransactionType.Deposit, Amount = 100.00 };
-var response = await client.PostAsJsonAsync(url, payload);
-```
-
-#### **Get transaction history** → `GET /transactions/{accountId}`
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API as Minimal API (Program.cs)
-    participant Handler as EndpointHandler
-    participant Storage as Storage
-
-    Client->>API: GET /transactions/{accountId}
-    API->>Handler: GetTransactionHistoryAsync(accountId)
-    Handler->>Storage: Get Transactions(accountId)
-    Storage-->>Handler: Return Transactions
-    Handler-->>API: Return HTTP 200 with Transactions
-    API-->>Client: HTTP 200 OK (Transactions JSON)
-```
-##### Endpoint Workflow
-
-```mermaid
-flowchart TD
-    A(GET /transactions) -->|Valid accountId| B(Fetch Transactions from Storage)
-    B -->|Transactions Found| C(Return HTTP 200 with Transactions JSON)
-    B -->|No Transactions| D(Return HTTP 200 with Empty List)
-    A -->|Invalid accountId| E(Return HTTP 400 Bad Request)
-    A -->|Account Not Found| F(Return HTTP 404 Not Found)
-```
-
-Retrieves a list of transactions for an account.
-```csharp
-var client = new HttpClient();
-var url = "https://api.example.com/transactions/123";
-var response = await client.GetAsync(url);
-var transactions = await response.Content.ReadFromJsonAsync<List<Transaction>>();
-```
-
-#### **Add a specialty transaction** → `POST /transaction/{accountId}/{type}/{amount}`
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API as Minimal API (Program.cs)
-    participant Handler as EndpointHandler
-    participant Storage as Storage
-
-    Client->>API: POST /transaction
-    API->>Handler: AddTransactionAsync(accountId, type, amount)
-    Handler->>Storage: Validate Account
-    Storage-->>Handler: Return Account
-    Handler->>Storage: Validate Transaction Type
-    Storage-->>Handler: Type Valid?
-    Handler-->>API: Return HTTP 200 OK or 400 Bad Request
-    API-->>Client: HTTP 200 OK or 400 Bad Request
-```
-##### Endpoint Workflow
-
-```mermaid
-flowchart TD
-    A(POST /transaction) -->|Valid Input| B(Fetch Account from Storage)
-    B -->|Account Found| C(Validate Transaction Type)
-    C -->|Valid Type| D(Add Transaction & Save Changes)
-    D --> E(Return HTTP 200 OK)
-    C -->|Invalid Type| F(Return HTTP 400 Bad Request)
-    B -->|Account Not Found| G(Return HTTP 404 Not Found)
-    A -->|Invalid Input| H(Return HTTP 400 Bad Request)
-```
-
-Adds a transaction type (e.g., overdraft fee or interest) to an account.
-```csharp
-var client = new HttpClient();
-var url = "https://api.example.com/transaction/123/Fee_Overdraft/15.00";
-var payload = new Transaction { Id = 123, Type = TransactionType.Fee_Overdraft, Amount = 15.00 };
-var response = await client.PostAsJsonAsync(url, payload);
-```
+---
 
 ## Running and Debugging Tests
 
-To verify your implementation, use the C# Dev Kit **Unit Test Runner** and **Code Coverage** button. If tests do not run correctly, try these steps:
+Use the C# Dev Kit **Unit Test Runner** and **Code Coverage** button. If tests fail, try:
 
 ```bash
 dotnet clean
@@ -295,5 +151,5 @@ dotnet build
 dotnet test --collect:"Coverage"
 ```
 
-If issues persist, restart VS Code and ensure your dependencies are installed correctly.
+Restart VS Code if issues persist.
 

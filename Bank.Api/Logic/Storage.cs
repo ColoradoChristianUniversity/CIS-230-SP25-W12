@@ -1,138 +1,92 @@
 using System.Text.Json;
 using Bank.Logic;
-using Bank.Logic.Abstractions;
-using System.Text.Json.Serialization;
 
 namespace Bank.Api.Logic;
-public class ITransactionConverter : JsonConverter<ITransaction>
+
+public class Storage : IStorage
 {
-    public override ITransaction? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        using (var document = JsonDocument.ParseValue(ref reader))
-        {
-            var root = document.RootElement;
-
-            if (!root.TryGetProperty("Type", out var typeProperty))
-            {
-                throw new JsonException("Missing 'Type' property.");
-            }
-
-            var type = typeProperty.GetString();
-            return type switch
-            {
-                nameof(Transaction) => JsonSerializer.Deserialize<Transaction>(root.GetRawText(), options),
-                _ => throw new JsonException($"Unknown transaction type: {type}")
-            };
-        }
-    }
-
-    public override void Write(Utf8JsonWriter writer, ITransaction value, JsonSerializerOptions options)
-    {
-        JsonSerializer.Serialize(writer, (object)value, value.GetType(), options);
-    }
-}
-
-public class Storage
-{
-    private const int firstId = 1;
     private readonly string path;
     private readonly List<Account> accounts;
-    private readonly JsonSerializerOptions jsonOptions;
 
     public Storage(string? fileName = "store.json")
     {
         path = Path.Combine(AppContext.BaseDirectory, fileName ?? "store.json");
 
-        jsonOptions = new JsonSerializerOptions
-        {
-            Converters = { new ITransactionConverter() },
-            WriteIndented = true
-        };
-
-        if (!File.Exists(path))
-        {
-            File.WriteAllText(path, "[]"); // Ensures an empty JSON array instead of just creating the file
-        }
-
         try
         {
-            accounts = JsonSerializer.Deserialize<List<Account>>(File.ReadAllText(path), jsonOptions) ?? new List<Account>();
+            accounts = JsonSerializer.Deserialize<List<Account>>(ReadAllText()) ?? [];
         }
         catch (JsonException)
         {
-            accounts = new List<Account>();
+            accounts = [];
+        }
+
+        string ReadAllText()
+        {
+            if (!File.Exists(path))
+            {
+                File.WriteAllText(path, "[]");
+            }
+
+            return File.ReadAllText(path);
         }
     }
 
-    public int[] ListAccounts()
-    {
-        return accounts.Select(a => a.Id).ToArray();
-    }
+    public int[] ListAccounts() => accounts.Select(a => a.Id).ToArray();
 
-    public Account AddAccount()
+    public Account NewAccount()
     {
-        var newAccount = new Account
+        Account newAccount = new()
         {
-            Id = GenerateNewAccountId(),
+            Id = accounts.Count == 0 ? 1 : accounts.Max(a => a.Id) + 1,
             Settings = new()
         };
 
         accounts.Add(newAccount);
         SaveChanges();
         return newAccount;
-
-        int GenerateNewAccountId()
-        {
-            if (accounts.Count == 0)
-            {
-                return firstId;
-            }
-
-            return accounts.Max(a => a.Id) + 1;
-        }
     }
 
-    public Account? GetAccount(int id) => accounts.FirstOrDefault(a => a.Id == id);
+    public bool TryGetAccount(int id, out Account account)
+    {
+        account = accounts.FirstOrDefault(a => a.Id == id)!;
+        return account is not null;
+    }
 
     public void RemoveAccount(int id)
     {
-        var account = GetAccount(id);
-        if (account == null)
+        if (TryGetAccount(id, out var account))
         {
-            return;
+            accounts.Remove(account);
+            SaveChanges();
+        }
+    }
+
+    public Account UpdateAccount(Account account)
+    {
+        if (TryGetAccount(account.Id, out var existingAccount))
+        {
+            accounts.Remove(existingAccount);
         }
 
-        accounts.Remove(account);
+        accounts.Add(account);
         SaveChanges();
-    }
 
-    private void SaveChanges()
-    {
-        var json = JsonSerializer.Serialize(accounts, jsonOptions);
-        File.WriteAllText(path, json);
-    }
-
-    // LS Additions:
-    public Transaction CreateTransaction(TransactionType type, double amount, DateTime date)
-    {
-        return new Transaction()
+        if (!TryGetAccount(account.Id, out var updatedAccount))
         {
-            Type = type,
-            Amount = amount,
-            Date = date
-        };
+            throw new InvalidOperationException($"Account {account.Id} not found after update.");
+        }
+        return updatedAccount;
     }
 
-    public void AddTransaction(Account account, double amount, TransactionType transaction)
-    {
-        account.TryAddTransaction(CreateTransaction(transaction, amount, DateTime.UtcNow));
-        SaveChanges();
-    }
+    private void SaveChanges() => File.WriteAllText(path, JsonSerializer.Serialize(accounts));
 
-    public IReadOnlyList<ITransaction> GetTransactions(int accountId)
+    public IReadOnlyList<Transaction> GetTransactions(int accountId)
     {
-        var account = GetAccount(accountId);
-        var transactions = account.GetTransactions().OfType<Transaction>().ToList();
-        return transactions;
+        if (TryGetAccount(accountId, out var account))
+        {
+            return account.GetTransactions();
+        }
+        return [];
     }
 }

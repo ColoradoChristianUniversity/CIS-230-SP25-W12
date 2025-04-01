@@ -2,10 +2,12 @@ namespace Bank.Api.Logic
 {
     public interface IEndpointHandler
     {
+        public static Storage Storage { get; set; } = new();
+        
         Task<IResult> CreateAccountAsync();
         Task<IResult> DeleteAccountAsync(int accountId);
         Task<IResult> GetAccountAsync(int accountId);
-        Task<IResult> GetDefaultSettingsAsync();
+        IResult GetDefaultSettings();
         Task<IResult> WithdrawAsync(int accountId, double amount);
         Task<IResult> DepositAsync(int accountId, double amount);
         Task<IResult> GetTransactionHistoryAsync(int accountId);
