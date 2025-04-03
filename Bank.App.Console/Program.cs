@@ -1,4 +1,6 @@
-﻿using Spectre.Console;
+﻿using Bank.Logic.Models;
+
+using Spectre.Console;
 
 class Program
 {
@@ -68,7 +70,7 @@ public class MainMenuScreen
         _apiClient = apiClient;
     }
 
-    public async Task<AccountDto?> ShowAsync()
+    public async Task<Account?> ShowAsync()
     {
         Console.Clear();
         var accounts = await _apiClient.GetAccountsAsync();
@@ -83,7 +85,7 @@ public class MainMenuScreen
 
         AnsiConsole.Write(table);
 
-        var choices = accounts.Select(a => a.Id.ToString()).ToList();
+        var choices = accounts.Select(a => $"Open Account: {a.Id}").ToList();
         choices.Add("Create");
         choices.Add("Exit");
 
@@ -103,7 +105,8 @@ public class MainMenuScreen
             return await ShowAsync();
         }
 
-        return accounts.First(a => a.Id.ToString() == choice);
+        var id = int.Parse(choice.Split(':')[1].Trim());
+        return accounts.First(a => a.Id == id);
     }
 }
 
@@ -129,11 +132,54 @@ public class AccountMenuScreen
             var action = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
                     .Title("Choose an action")
-                    .AddChoices("Deposit", "Withdraw", "Back"));
+                    .AddChoices("Deposit", "Withdraw", "View All Transactions", "Delete Account", "Back"));
 
             if (action == "Back")
             {
                 break;
+            }
+
+            if (action == "Delete Account")
+            {
+                var confirm = AnsiConsole.Confirm("Are you sure you want to delete this account?");
+                if (confirm)
+                {
+                    await _apiClient.DeleteAccountAsync(_accountId);
+                    AnsiConsole.MarkupLine("[red]Account deleted.[/]");
+                    Thread.Sleep(1000);
+                    break;
+                }
+                continue;
+            }
+            else if (action == "View All Transactions")
+            {
+                var transactions = account.Transactions;
+
+                if (transactions.Count == 0)
+                {
+                    AnsiConsole.MarkupLine("[yellow]No transactions found.[/]");
+                }
+                else
+                {
+                    var txTable = new Table();
+                    txTable.AddColumn("Date");
+                    txTable.AddColumn("Type");
+                    txTable.AddColumn("Amount");
+
+                    foreach (var tx in transactions)
+                    {
+                        txTable.AddRow(
+                            tx.Date.ToString("g"),
+                            tx.Type.ToString(),
+                            $"${tx.Amount:0.00}");
+                    }
+
+                    AnsiConsole.Write(txTable);
+                }
+
+                AnsiConsole.MarkupLine("[grey]Press any key to return...[/]");
+                Console.ReadKey();
+                continue;
             }
 
             var amount = AnsiConsole.Ask<double>("Enter amount:");

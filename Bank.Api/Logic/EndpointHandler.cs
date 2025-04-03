@@ -1,4 +1,5 @@
 using Bank.Logic;
+using Bank.Logic.Models;
 
 namespace Bank.Api.Logic;
 
@@ -130,7 +131,7 @@ public class EndpointHandler(IStorage storage) : IEndpointHandler
                 return Results.NotFound($"Account {accountId} not found");
             }
 
-            var balance = account.GetBalance();
+            var balance = account.Balance;
             if (balance < amount)
             {
                 return Results.BadRequest("Insufficient funds");

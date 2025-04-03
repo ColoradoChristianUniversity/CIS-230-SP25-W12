@@ -1,38 +1,71 @@
 {
-    "version": "0.2.0",
-    "compounds": [
-      {
-        "name": "Run Console + API",
-        "configurations": ["Bank.App.Console", "Bank.Api"]
+  "version": "0.2.0",
+  "compounds": [
+    {
+      "name": "Run Console + API",
+      "configurations": [
+        "Bank.App.Console",
+        "Bank.Api"
+      ]
+    },
+    {
+      "name": "Run Web + API",
+      "configurations": [
+        "Bank.App.Web",
+        "Bank.Api"
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "Bank.App.Console",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-console",
+      "program": "${workspaceFolder}/Bank.App.Console/bin/Debug/net9.0/Bank.App.Console.dll",
+      "cwd": "${workspaceFolder}/Bank.App.Console",
+      "console": "externalTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Bank.Api",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-api",
+      "program": "${workspaceFolder}/Bank.Api/bin/Debug/net9.0/Bank.Api.dll",
+      "cwd": "${workspaceFolder}/Bank.Api",
+      "stopAtEntry": false,
+      "postDebugTask": "launch-browser",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
       }
-    ],
-    "configurations": [
-      {
-        "name": "Bank.App.Console",
-        "type": "coreclr",
-        "request": "launch",
-        "preLaunchTask": "build-console",
-        "program": "${workspaceFolder}/Bank.App.Console/bin/Debug/net9.0/Bank.App.Console.dll",
-        "cwd": "${workspaceFolder}/Bank.App.Console",
-        "console": "integratedTerminal",
-        "stopAtEntry": false
-      },
-      {
-        "name": "Bank.Api",
-        "type": "coreclr",
-        "request": "launch",
-        "preLaunchTask": "build-api",
-        "program": "${workspaceFolder}/Bank.Api/bin/Debug/net9.0/Bank.Api.dll",
-        "cwd": "${workspaceFolder}/Bank.Api",
-        "stopAtEntry": false,
-        "launchBrowser": {
-          "enabled": true,
-          "args": "http://localhost:1234"
+    },
+    {
+      "name": "Bank.App.Web",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-web",
+      "program": "${workspaceFolder}/Bank.App.Web/bin/Debug/net9.0/Bank.App.Web.dll",
+      "cwd": "${workspaceFolder}/Bank.App.Web",
+      "stopAtEntry": false,
+      "launchBrowser": {
+        "enabled": true,
+        "windows": {
+          "command": "cmd.exe",
+          "args": "/C start ${auto-detect-url}"
         },
-        "env": {
-          "ASPNETCORE_ENVIRONMENT": "Development"
+        "osx": {
+          "command": "open",
+          "args": "${auto-detect-url}"
+        },
+        "linux": {
+          "command": "xdg-open",
+          "args": "${auto-detect-url}"
         }
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
       }
-    ]
-  }
-  
+    }
+  ]
+}

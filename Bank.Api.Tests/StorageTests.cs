@@ -11,10 +11,7 @@ public class StorageTests : IDisposable
 
     public StorageTests()
     {
-        if (File.Exists(testFilePath))
-        {
-            File.Delete(testFilePath);
-        }
+        Dispose();
 
         storage = new Storage(testFilePath);
     }
@@ -95,7 +92,7 @@ public class StorageTests : IDisposable
     public void RemoveAccount_DoesNothing_WhenAccountDoesNotExist()
     {
         // Arrange
-        var maxId = storage.ListAccounts().DefaultIfEmpty(0).Max();
+        var maxId = storage.ListAccounts().Select(x => x.Id).DefaultIfEmpty(0).Max();
         var nonExistentId = maxId + 1;
 
         // Act
@@ -132,8 +129,8 @@ public class StorageTests : IDisposable
         var list = storage.ListAccounts();
 
         // Assert
-        list.Should().Contain(a1.Id);
-        list.Should().Contain(a2.Id);
+        list.Should().Contain(a1);
+        list.Should().Contain(a2);
         list.Should().HaveCount(2);
     }
 
@@ -148,7 +145,7 @@ public class StorageTests : IDisposable
         var updated = storage.UpdateAccount(account);
 
         // Assert
-        updated.GetTransactions().Should().ContainSingle(t =>
+        updated.Transactions.Should().ContainSingle(t =>
             t.Amount == 100.0 && t.Type == TransactionType.Deposit);
     }
 
@@ -156,7 +153,7 @@ public class StorageTests : IDisposable
     public void GetTransactions_ReturnsEmptyList_WhenAccountMissing()
     {
         // Arrange
-        int fakeId = storage.ListAccounts().DefaultIfEmpty(0).Max() + 1;
+        int fakeId = storage.ListAccounts().Any() ? storage.ListAccounts().Max(x => x.Id) + 1 : 1;
 
         // Act
         var transactions = storage.GetTransactions(fakeId);

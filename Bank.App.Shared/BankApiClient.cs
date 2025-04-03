@@ -1,19 +1,21 @@
 using System.Net.Http.Json;
 
+using Bank.Logic.Models;
+
 public class BankApiClient : IApiClient
 {
     private readonly HttpClient _http;
 
     public BankApiClient(HttpClient? httpClient, bool validateConnection = false)
     {
-        _http = httpClient ?? new HttpClient { BaseAddress = new Uri("http://localhost:1234") };;
+        _http = httpClient ?? new HttpClient { BaseAddress = new Uri("http://localhost:1234") }; ;
 
         if (validateConnection)
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Head, "/");
-                var response = _http.SendAsync(request).GetAwaiter().GetResult();
+                var request = new HttpRequestMessage(HttpMethod.Get, "/");
+                var response = _http.GetAsync("/", HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult();
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -27,16 +29,16 @@ public class BankApiClient : IApiClient
         }
     }
 
-    public async Task<List<AccountDto>> GetAccountsAsync()
+    public async Task<List<Account>> GetAccountsAsync()
     {
         var response = await _http.GetAsync("/");
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<List<AccountDto>>() ?? throw new Exception("Failed to deserialize accounts.");
+        return await response.Content.ReadFromJsonAsync<List<Account>>() ?? throw new Exception("Failed to deserialize accounts.");
     }
 
-    public async Task<AccountDto> GetAccountAsync(int id)
+    public async Task<Account> GetAccountAsync(int id)
     {
-        return await _http.GetFromJsonAsync<AccountDto>($"/account/{id}") ?? throw new Exception("Failed to deserialize account.");
+        return await _http.GetFromJsonAsync<Account>($"/account/{id}") ?? throw new Exception("Failed to deserialize account.");
     }
 
     public async Task CreateAccountAsync()
@@ -52,6 +54,11 @@ public class BankApiClient : IApiClient
     public async Task WithdrawAsync(int accountId, double amount)
     {
         await _http.PostAsync($"/withdraw/{accountId}/{amount}", null);
+    }
+
+    public async Task DeleteAccountAsync(int accountId)
+    {
+        await _http.DeleteAsync($"/account/{accountId}");
     }
 }
 

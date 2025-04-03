@@ -1,5 +1,6 @@
 using System.Text.Json;
-using Bank.Logic;
+
+using Bank.Logic.Models;
 
 namespace Bank.Api.Logic;
 
@@ -18,8 +19,9 @@ public class Storage : IStorage
         }
         catch (JsonException)
         {
-            accounts = [];
+            accounts = new List<Account>();
         }
+
 
         string ReadAllText()
         {
@@ -32,7 +34,7 @@ public class Storage : IStorage
         }
     }
 
-    public int[] ListAccounts() => accounts.Select(a => a.Id).ToArray();
+    public IEnumerable<Account> ListAccounts() => accounts;
 
     public Account NewAccount()
     {
@@ -82,7 +84,7 @@ public class Storage : IStorage
     {
         if (TryGetAccount(accountId, out var account))
         {
-            return account.GetTransactions();
+            return account.Transactions;
         }
         return [];
     }

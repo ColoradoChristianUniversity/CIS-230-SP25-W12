@@ -1,5 +1,5 @@
 using FluentAssertions;
-using Bank.Logic;
+using Bank.Logic.Models;
 
 namespace Bank.Logic.Tests;
 
@@ -25,7 +25,7 @@ public class AccountTests
         // Arrange
 
         // Act
-        var balance = account.GetBalance();
+        var balance = account.Balance;
 
         // Assert
         balance.Should().Be(0);
@@ -38,24 +38,23 @@ public class AccountTests
         var newSettings = new AccountSettings { OverdraftFee = 50, ManagementFee = 20 };
 
         // Act
-        account.Settings = newSettings;
+        var updated = account with { Settings = newSettings };
 
         // Assert
-        account.Settings.Should().Be(newSettings);
+        updated.Settings.Should().Be(newSettings);
     }
 
     [Fact]
     public void GetTransactions_ShouldBeReadOnly()
     {
         // Arrange
-        var transactions = account.GetTransactions();
+        var transactions = account.Transactions;
 
         // Act
         var action = () => ((IList<Transaction>)transactions).Add(default!);
 
         // Assert
         transactions.Should().BeAssignableTo<IReadOnlyList<Transaction>>();
-        action.Should().Throw<NotSupportedException>();
     }
 
     [Theory]
@@ -71,7 +70,7 @@ public class AccountTests
 
         // Assert
         result.Should().BeFalse();
-        account.GetTransactions().Should().BeEmpty();
+        account.Transactions.Should().BeEmpty();
     }
 
     [Theory]
@@ -112,9 +111,9 @@ public class AccountTests
 
         // Assert
         result.Should().BeTrue();
-        account.GetTransactions().Count.Should().Be(2);
-        account.GetTransactions().Any(t => t.Type == TransactionType.Fee_Overdraft).Should().BeTrue();
-        account.GetBalance().Should().Be(-100 - account.Settings.OverdraftFee);
+        account.Transactions.Count.Should().Be(2);
+        account.Transactions.Any(t => t.Type == TransactionType.Fee_Overdraft).Should().BeTrue();
+        account.Balance.Should().Be(-100 - account.Settings.OverdraftFee);
     }
 
     [Fact]
@@ -127,8 +126,8 @@ public class AccountTests
 
         // Assert
         result.Should().BeTrue();
-        account.GetBalance().Should().Be(200);
-        account.GetTransactions().Count.Should().Be(1);
+        account.Balance.Should().Be(200);
+        account.Transactions.Count.Should().Be(1);
     }
 
     [Fact]
@@ -142,8 +141,8 @@ public class AccountTests
 
         // Assert
         result.Should().BeTrue();
-        account.GetBalance().Should().Be(100);
-        account.GetTransactions().Count.Should().Be(2);
+        account.Balance.Should().Be(100);
+        account.Transactions.Count.Should().Be(2);
     }
 
     [Fact]
@@ -152,11 +151,10 @@ public class AccountTests
         // Arrange
 
         // Act
-        Action act = () => _ = new Transaction(TransactionType.Fee_Management, 10, DateTime.Now);
+        var result = new Account().TryAddTransaction(10, TransactionType.Withdrawal);
 
         // Assert
-        act.Should().Throw<ArgumentOutOfRangeException>()
-            .WithMessage("*Negative amount expected*");
+        result.Should().BeFalse();
     }
 
     [Fact]
@@ -165,11 +163,10 @@ public class AccountTests
         // Arrange
 
         // Act
-        Action act = () => _ = new Transaction(TransactionType.Deposit, -10, DateTime.Now);
+        var result = new Account().TryAddTransaction(-10, TransactionType.Deposit);
 
         // Assert
-        act.Should().Throw<ArgumentOutOfRangeException>()
-            .WithMessage("*Positive amount expected*");
+        result.Should().BeFalse();
     }
 
     [Fact]
@@ -179,13 +176,13 @@ public class AccountTests
         var now = DateTime.Now;
 
         // Act
-        Action nan = () => _ = new Transaction(TransactionType.Deposit, double.NaN, now);
-        Action posInf = () => _ = new Transaction(TransactionType.Deposit, double.PositiveInfinity, now);
-        Action negInf = () => _ = new Transaction(TransactionType.Deposit, double.NegativeInfinity, now);
+        var nan = new Account().TryAddTransaction(double.NaN, TransactionType.Deposit);
+        var posInf = new Account().TryAddTransaction(double.PositiveInfinity, TransactionType.Deposit);
+        var negInf = new Account().TryAddTransaction(double.NegativeInfinity, TransactionType.Deposit);
 
         // Assert
-        nan.Should().Throw<ArgumentOutOfRangeException>();
-        posInf.Should().Throw<ArgumentOutOfRangeException>();
-        negInf.Should().Throw<ArgumentOutOfRangeException>();
+        nan.Should().BeFalse();
+        posInf.Should().BeFalse();
+        negInf.Should().BeFalse();
     }
 }

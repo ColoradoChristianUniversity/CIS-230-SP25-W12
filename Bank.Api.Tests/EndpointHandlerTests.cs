@@ -3,7 +3,7 @@ using Bank.Logic;
 using Microsoft.AspNetCore.Http.HttpResults;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+using Bank.Logic.Models;
 
 namespace Bank.Api.Tests;
 
@@ -14,10 +14,7 @@ public class EndpointHandlerTests : IDisposable
 
     public EndpointHandlerTests()
     {
-        if (File.Exists(testFile))
-        {
-            File.Delete(testFile);
-        }
+        Dispose();
 
         handler = new EndpointHandler(new Storage(testFile));
     }
@@ -100,8 +97,8 @@ public class EndpointHandlerTests : IDisposable
         var result = await handler.ListAccountsAsync();
 
         // Assert
-        result.Should().BeOfType<Ok<int[]>>();
-        var ids = ((Ok<int[]>)result).Value;
+        result.Should().BeOfType<Ok<IEnumerable<Account>>>();
+        var ids = ((Ok<IEnumerable<Account>>)result).Value!.Select(x => x.Id);
         ids.Should().HaveCount(2);
     }
 

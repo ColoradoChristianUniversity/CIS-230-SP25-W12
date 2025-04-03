@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Xunit;
 
 namespace Bank.Logic.Tests;
 
@@ -21,6 +20,24 @@ public class UtilityTests
     public void InidicatesNegativeAmount_ShouldReturnFalse_ForNonNegativeTypes(TransactionType type)
     {
         type.InidicatesNegativeAmount().Should().BeFalse($"{type} should not indicate a negative amount");
+    }
+
+    [Theory]
+    [InlineData(TransactionType.Deposit)]
+    [InlineData(TransactionType.Interest)]
+    public void InidicatesPositiveAmount_ShouldReturnTrue_ForPositiveTypes(TransactionType type)
+    {
+        type.InidicatesPositiveAmount().Should().BeTrue($"{type} should indicate a positive amount");
+    }
+
+    [Theory]
+    [InlineData(TransactionType.Withdrawal)]
+    [InlineData(TransactionType.Fee_Overdraft)]
+    [InlineData(TransactionType.Fee_Management)]
+    [InlineData(TransactionType.Unknown)]
+    public void InidicatesPositiveAmount_ShouldReturnFalse_ForNonPositiveTypes(TransactionType type)
+    {
+        type.InidicatesPositiveAmount().Should().BeFalse($"{type} should not indicate a positive amount");
     }
 
     [Theory]
