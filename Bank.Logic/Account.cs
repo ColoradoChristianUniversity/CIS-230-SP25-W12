@@ -21,12 +21,12 @@ public class Account
             return false;
         }
 
-        if (Utilities.InidicatesNegativeAmount(transactionType) != (amount < 0))
+        if (Utilities.InidicatesNegativeAmount(transactionType) && !(amount < 0))
         {
             return false;
         }
 
-        if (!Utilities.InidicatesNegativeAmount(transactionType) == (amount < 0))
+        if (!Utilities.InidicatesNegativeAmount(transactionType) && (amount < 0))
         {
             return false;
         }

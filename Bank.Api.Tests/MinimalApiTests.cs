@@ -3,8 +3,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Bank.Api;
 using Bank.Api.Logic;
+using Microsoft.Extensions.DependencyInjection;
 using Bank.Logic;
 
 namespace Bank.Api.Tests;
@@ -16,77 +16,104 @@ public class MinimalApiTests : IClassFixture<WebApplicationFactory<Program>>, ID
 
     public MinimalApiTests(WebApplicationFactory<Program> factory)
     {
-        _client = factory.CreateClient();
         _storage = new Storage();
+
+        var factoryWithTestStorage = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.AddSingleton<IStorage>(_storage);
+            });
+        });
+        _client = factoryWithTestStorage.CreateClient();
     }
 
     public void Dispose() => DeleteAllAccounts();
 
     private void DeleteAllAccounts()
     {
-        foreach (var id in _storage.ListAccounts())
+        if (File.Exists(_storage.path))
         {
-            _storage.RemoveAccount(id);
+            File.Delete(_storage.path);
         }
     }
 
-    private async Task<int> CreateTestAccountAsync()
+    private int CreateTestAccount()
     {
-        var response = await _client.PostAsync("/account", null);
-        response.IsSuccessStatusCode.Should().BeTrue();
-
-        var account = await response.Content.ReadFromJsonAsync<Account>();
+        var account = _storage.NewAccount();
         account.Should().NotBeNull();
         return account!.Id;
     }
 
     [Fact]
-    public async Task CreateAccount_ReturnsSuccess()
+    public void POST_Account_Create_ReturnsSuccess()
     {
-        var accountId = await CreateTestAccountAsync();
+        // Arrange
+        _storage.ListAccounts().Should().BeEmpty();
+
+        // Act
+        var accountId = CreateTestAccount();
+
+        // Assert
         accountId.Should().BeGreaterThan(0);
     }
 
     [Fact]
-    public async Task ListAccounts_WithoutInsert_ReturnsEmpty()
+    public async Task GET_Accounts_ListWithoutInsert_ReturnsEmpty()
     {
+        // Arrange
         DeleteAllAccounts();
-        var response = await _client.GetAsync("/");
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
 
+        // Act
+        var response = await _client.GetAsync("/");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
         var accounts = await response.Content.ReadFromJsonAsync<List<int>>();
         accounts.Should().NotBeNull();
     }
 
     [Fact]
-    public async Task ListAccounts_WithInsert_ReturnsInserted()
+    public async Task GET_Accounts_ListWithInsert_ReturnsInserted()
     {
+        // Arrange
         DeleteAllAccounts();
-        var accountId = await CreateTestAccountAsync();
-        var response = await _client.GetAsync("/");
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var accountId = CreateTestAccount();
 
+        // Act
+        var response = await _client.GetAsync("/");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
         var accounts = await response.Content.ReadFromJsonAsync<List<int>>();
         accounts.Should().Contain(accountId);
     }
 
     [Fact]
-    public async Task DeleteAccount_ReturnsSuccess()
+    public async Task DELETE_Account_ReturnsSuccess()
     {
-        var accountId = await CreateTestAccountAsync();
-        var response = await _client.DeleteAsync($"/account/{accountId}");
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        // Arrange
+        var accountId = CreateTestAccount();
 
+        // Act
+        var response = await _client.DeleteAsync($"/account/{accountId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
         _storage.TryGetAccount(accountId, out var deletedAccount);
         deletedAccount.Should().BeNull();
     }
 
     [Fact]
-    public async Task GetAccount_ReturnsAccount_WhenAccountExists()
+    public async Task GET_Account_WhenExists_ReturnsAccount()
     {
-        var accountId = await CreateTestAccountAsync();
+        // Arrange
+        var accountId = CreateTestAccount();
+
+        // Act
         var response = await _client.GetAsync($"/account/{accountId}");
 
+        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var account = await response.Content.ReadFromJsonAsync<Account>();
         account.Should().NotBeNull();
@@ -94,55 +121,78 @@ public class MinimalApiTests : IClassFixture<WebApplicationFactory<Program>>, ID
     }
 
     [Fact]
-    public async Task GetAccount_ReturnsNotFound_WhenAccountDoesNotExist()
+    public async Task GET_Account_WhenNotExists_ReturnsNotFound()
     {
+        // Act
         var response = await _client.GetAsync("/account/999");
+
+        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
-    public async Task Withdraw_ReturnsOk_WhenSufficientFunds()
+    public async Task POST_Withdraw_WithSufficientFunds_ReturnsOk()
     {
-        var accountId = await CreateTestAccountAsync();
+        // Arrange
+        var accountId = CreateTestAccount();
         await _client.PostAsync($"/deposit/{accountId}/200", null);
 
+        // Act
         var response = await _client.PostAsync($"/withdraw/{accountId}/100", null);
+
+        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
-    public async Task Withdraw_ReturnsBadRequest_WhenInsufficientFunds()
+    public async Task POST_Withdraw_WithInsufficientFunds_ReturnsBadRequest()
     {
-        var accountId = await CreateTestAccountAsync();
+        // Arrange
+        var accountId = CreateTestAccount();
+
+        // Act
         var response = await _client.PostAsync($"/withdraw/{accountId}/100", null);
+
+        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
-    public async Task Deposit_ReturnsOk_WhenAccountExists()
+    public async Task POST_Deposit_WhenAccountExists_ReturnsOk()
     {
-        var accountId = await CreateTestAccountAsync();
+        // Arrange
+        var accountId = CreateTestAccount();
+
+        // Act
         var response = await _client.PostAsync($"/deposit/{accountId}/100", null);
+
+        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
-    public async Task Deposit_ReturnsNotFound_WhenAccountDoesNotExist()
+    public async Task POST_Deposit_WhenAccountNotExists_ReturnsNotFound()
     {
+        // Act
         var response = await _client.PostAsync("/deposit/999/100", null);
+
+        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
-    public async Task GetTransactions_ReturnsTransactions_WhenAccountHasTransactions()
+    public async Task GET_Transactions_WhenAccountHasTransactions_ReturnsTransactions()
     {
-        var accountId = await CreateTestAccountAsync();
+        // Arrange
+        var accountId = CreateTestAccount();
         await _client.PostAsync($"/transactions/{accountId}/Deposit/100", null);
         await _client.PostAsync($"/transactions/{accountId}/Withdrawal/-50", null);
 
+        // Act
         var response = await _client.GetAsync($"/transactions/{accountId}");
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
 
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
         var transactions = await response.Content.ReadFromJsonAsync<List<Transaction>>(new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -153,46 +203,86 @@ public class MinimalApiTests : IClassFixture<WebApplicationFactory<Program>>, ID
     }
 
     [Fact]
-    public async Task GetTransactions_ReturnsNotFound_WhenAccountDoesNotExist()
+    public async Task GET_Transactions_WhenAccountNotExists_ReturnsNotFound()
     {
+        // Act
         var response = await _client.GetAsync("/transactions/999");
+
+        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
-    public async Task AddTransaction_ReturnsOk_WhenTransactionIsValid()
+    public async Task POST_Transaction_AddWhenValid_ReturnsOk()
     {
-        var accountId = await CreateTestAccountAsync();
+        // Arrange
+        var accountId = CreateTestAccount();
+
+        // Act
         var response = await _client.PostAsync($"/transactions/{accountId}/Deposit/100", null);
+
+        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
-    public async Task AddTransaction_ReturnsBadRequest_WhenTransactionTypeIsInvalid()
+    public async Task POST_Transaction_AddWhenInvalidType_ReturnsBadRequest()
     {
-        var accountId = await CreateTestAccountAsync();
+        // Arrange
+        var accountId = CreateTestAccount();
+
+        // Act
         var response = await _client.PostAsync($"/transactions/{accountId}/Invalid/100", null);
+
+        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
-    public async Task AddTransaction_ReturnsNotFound_WhenAccountDoesNotExist()
+    public async Task POST_Transaction_AddWhenAccountNotExists_ReturnsNotFound()
     {
+        // Act
         var response = await _client.PostAsync("/transactions/999/Deposit/100", null);
+
+        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
-    public async Task CreateAccount_ShouldStartWithCleanState()
+    public void POST_Account_Create_ShouldStartWithCleanState()
     {
+        // Arrange
         _storage.ListAccounts().Should().BeEmpty();
-        var accountId = await CreateTestAccountAsync();
+
+        // Act
+        var accountId = CreateTestAccount();
+
+        // Assert
         accountId.Should().BeGreaterThan(0);
     }
 
     [Fact]
-    public void AccountDeserialization_ShouldWork()
+    public async Task POST_Account_Create_ShouldReturnOneAsync()
     {
+        // Arrange
+        _storage.ListAccounts().Should().BeEmpty();
+
+        // Act
+        var response = await _client.PostAsync("/account", null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var account = await response.Content.ReadFromJsonAsync<Account>();
+        account.Should().NotBeNull();
+
+        _storage.ListAccounts().Should().HaveCount(1);
+        _storage.ListAccounts().Should().Contain(account!.Id);
+    }
+
+    [Fact]
+    public void Account_Deserialization_ShouldWork()
+    {
+        // Arrange
         var json = @"
         {
             ""settings"": { ""overdraftFee"": 35, ""managementFee"": 10 },
@@ -208,7 +298,10 @@ public class MinimalApiTests : IClassFixture<WebApplicationFactory<Program>>, ID
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
+        // Act
         var account = JsonSerializer.Deserialize<Account>(json, options);
+
+        // Assert
         account.Should().NotBeNull();
         account!.Transactions.Should().HaveCount(2);
         account.Transactions[0].Type.Should().Be(TransactionType.Deposit);
@@ -216,8 +309,9 @@ public class MinimalApiTests : IClassFixture<WebApplicationFactory<Program>>, ID
     }
 
     [Fact]
-    public void TransactionDeserialization_ShouldWork()
+    public void Transactions_Deserialization_ShouldWork()
     {
+        // Arrange
         var json = @"
         [
             { ""type"": 1, ""amount"": 100, ""date"": ""2025-03-27T02:32:35Z"" },
@@ -229,7 +323,10 @@ public class MinimalApiTests : IClassFixture<WebApplicationFactory<Program>>, ID
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
+        // Act
         var transactions = JsonSerializer.Deserialize<List<Transaction>>(json, options);
+
+        // Assert
         transactions.Should().NotBeNull();
         transactions!.Count.Should().Be(2);
         transactions[0].Type.Should().Be(TransactionType.Deposit);

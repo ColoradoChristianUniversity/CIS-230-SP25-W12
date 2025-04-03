@@ -10,7 +10,15 @@ public class TransactionTests
     [Fact]
     public void CreateTransaction_WithNaNAmount_ShouldThrow()
     {
-        var act = () => CreateTransaction(TransactionType.Deposit, double.NaN, DateTime.UtcNow);
+        // Arrange
+        var type = TransactionType.Deposit;
+        var amount = double.NaN;
+        var date = DateTime.UtcNow;
+
+        // Act
+        var act = () => CreateTransaction(type, amount, date);
+
+        // Assert
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
@@ -19,21 +27,44 @@ public class TransactionTests
     [InlineData(double.NegativeInfinity)]
     public void CreateTransaction_WithInfinityAmount_ShouldThrow(double amount)
     {
-        var act = () => CreateTransaction(TransactionType.Deposit, amount, DateTime.UtcNow);
+        // Arrange
+        var type = TransactionType.Deposit;
+        var date = DateTime.UtcNow;
+
+        // Act
+        var act = () => CreateTransaction(type, amount, date);
+
+        // Assert
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     [Fact]
     public void CreateTransaction_ValidNegativeWithdrawal_ShouldSucceed()
     {
-        var tx = CreateTransaction(TransactionType.Withdrawal, -50, DateTime.UtcNow);
-        tx.Amount.Should().Be(-50);
+        // Arrange
+        var type = TransactionType.Withdrawal;
+        var amount = -50;
+        var date = DateTime.UtcNow;
+
+        // Act
+        var tx = CreateTransaction(type, amount, date);
+
+        // Assert
+        tx.Amount.Should().Be(amount);
     }
 
     [Fact]
     public void CreateTransaction_PositiveWithdrawal_ShouldThrow()
     {
-        var act = () => CreateTransaction(TransactionType.Withdrawal, 50, DateTime.UtcNow);
+        // Arrange
+        var type = TransactionType.Withdrawal;
+        var amount = 50;
+        var date = DateTime.UtcNow;
+
+        // Act
+        var act = () => CreateTransaction(type, amount, date);
+
+        // Assert
         act.Should().Throw<ArgumentOutOfRangeException>().WithMessage("*Negative amount expected*");
     }
 
@@ -42,8 +73,15 @@ public class TransactionTests
     [InlineData(TransactionType.Fee_Management)]
     public void CreateTransaction_ZeroAmountForFee_ShouldBeValid(TransactionType type)
     {
-        var tx = CreateTransaction(type, 0, DateTime.UtcNow);
-        tx.Amount.Should().Be(0);
+        // Arrange
+        var amount = 0;
+        var date = DateTime.UtcNow;
+
+        // Act
+        var tx = CreateTransaction(type, amount, date);
+
+        // Assert
+        tx.Amount.Should().Be(amount);
     }
 
     [Theory]
@@ -51,7 +89,14 @@ public class TransactionTests
     [InlineData(TransactionType.Fee_Management)]
     public void CreateTransaction_PositiveAmountForFee_ShouldThrow(TransactionType type)
     {
-        var act = () => CreateTransaction(type, 10, DateTime.UtcNow);
+        // Arrange
+        var amount = 10;
+        var date = DateTime.UtcNow;
+
+        // Act
+        var act = () => CreateTransaction(type, amount, date);
+
+        // Assert
         act.Should().Throw<ArgumentOutOfRangeException>().WithMessage("*Negative amount expected*");
     }
 
@@ -60,18 +105,31 @@ public class TransactionTests
     [InlineData(TransactionType.Interest)]
     public void CreateTransaction_ZeroAmountForPositiveTypes_ShouldBeValid(TransactionType type)
     {
-        var tx = CreateTransaction(type, 0, DateTime.UtcNow);
-        tx.Amount.Should().Be(0);
+        // Arrange
+        var amount = 0;
+        var date = DateTime.UtcNow;
+
+        // Act
+        var tx = CreateTransaction(type, amount, date);
+
+        // Assert
+        tx.Amount.Should().Be(amount);
     }
 
     [Fact]
     public void Transaction_WithValidInputs_ShouldSetValues()
     {
+        // Arrange
+        var type = TransactionType.Deposit;
+        var amount = 100;
         var now = DateTime.UtcNow;
-        var tx = CreateTransaction(TransactionType.Deposit, 100, now);
 
-        tx.Type.Should().Be(TransactionType.Deposit);
-        tx.Amount.Should().Be(100);
+        // Act
+        var tx = CreateTransaction(type, amount, now);
+
+        // Assert
+        tx.Type.Should().Be(type);
+        tx.Amount.Should().Be(amount);
         tx.Date.Should().BeCloseTo(now, TimeSpan.FromMilliseconds(10));
     }
 
@@ -80,7 +138,13 @@ public class TransactionTests
     [InlineData(TransactionType.Fee_Overdraft, 20)]
     public void CreateTransaction_PositiveAmountForNegativeExpected_ShouldThrow(TransactionType type, double amount)
     {
-        var act = () => CreateTransaction(type, amount, DateTime.UtcNow);
+        // Arrange
+        var date = DateTime.UtcNow;
+
+        // Act
+        var act = () => CreateTransaction(type, amount, date);
+
+        // Assert
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
@@ -89,16 +153,26 @@ public class TransactionTests
     [InlineData(TransactionType.Interest, -50)]
     public void CreateTransaction_NegativeAmountForPositiveExpected_ShouldThrow(TransactionType type, double amount)
     {
-        var act = () => CreateTransaction(type, amount, DateTime.UtcNow);
+        // Arrange
+        var date = DateTime.UtcNow;
+
+        // Act
+        var act = () => CreateTransaction(type, amount, date);
+
+        // Assert
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     [Fact]
     public void Transaction_ShouldBeImmutableAndSupportWithExpression()
     {
+        // Arrange
         var original = CreateTransaction(TransactionType.Deposit, 100, DateTime.UtcNow);
+
+        // Act
         var copy = original with { Amount = 200 };
 
+        // Assert
         copy.Should().NotBeSameAs(original);
         copy.Type.Should().Be(original.Type);
         copy.Amount.Should().Be(200);
@@ -107,9 +181,13 @@ public class TransactionTests
     [Fact]
     public void Transaction_WithExpression_ShouldBypassValidation()
     {
+        // Arrange
         var valid = CreateTransaction(TransactionType.Deposit, 100, DateTime.UtcNow);
+
+        // Act
         var invalid = valid with { Type = TransactionType.Fee_Management };
 
+        // Assert
         invalid.Amount.Should().BePositive("with-expressions do not re-run validation");
     }
 }

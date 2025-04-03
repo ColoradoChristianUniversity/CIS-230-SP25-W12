@@ -5,7 +5,7 @@ namespace Bank.Api.Logic;
 
 public class Storage : IStorage
 {
-    private readonly string path;
+    public readonly string path;
     private readonly List<Account> accounts;
 
     public Storage(string? fileName = "store.json")
@@ -72,10 +72,7 @@ public class Storage : IStorage
         accounts.Add(account);
         SaveChanges();
 
-        if (!TryGetAccount(account.Id, out var updatedAccount))
-        {
-            throw new InvalidOperationException($"Account {account.Id} not found after update.");
-        }
+        TryGetAccount(account.Id, out var updatedAccount);
         return updatedAccount;
     }
 
