@@ -32,7 +32,7 @@
       "problemMatcher": "$msCompile"
     },
     {
-      "label": "launch-browser",
+      "label": "launch-browser-api",
       "type": "shell",
       "command": "cmd",
       "args": [
@@ -43,14 +43,12 @@
       "problemMatcher": []
     },
     {
-      "label": "launch-browser-web",
-      "type": "shell",
-      "command": "cmd",
-      "args": [
-        "/c",
-        "start",
-        "http://localhost:2345"
+      "label": "build-and-launch-api",
+      "dependsOn": [
+        "build-api",
+        "launch-browser-api"
       ],
+      "dependsOrder": "sequence",
       "problemMatcher": []
     }
   ]

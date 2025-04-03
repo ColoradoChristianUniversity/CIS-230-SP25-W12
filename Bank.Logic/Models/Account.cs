@@ -10,8 +10,10 @@ public record class Account
 
     public int Id { get; init; } = default;
 
+    [JsonIgnore]
     public double Balance => txns.Sum(t => t.Amount);
 
+    [JsonIgnore]
     public IReadOnlyList<Transaction> Transactions => txns;
 
     [JsonInclude]

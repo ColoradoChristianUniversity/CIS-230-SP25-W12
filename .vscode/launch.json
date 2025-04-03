@@ -31,11 +31,10 @@
       "name": "Bank.Api",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build-api",
+      "preLaunchTask": "build-and-launch-api",
       "program": "${workspaceFolder}/Bank.Api/bin/Debug/net9.0/Bank.Api.dll",
       "cwd": "${workspaceFolder}/Bank.Api",
       "stopAtEntry": false,
-      "postDebugTask": "launch-browser",
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
