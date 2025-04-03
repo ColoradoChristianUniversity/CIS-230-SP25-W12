@@ -10,16 +10,11 @@
 
 1. Copy the `Console App` into a `Web App`. 
 
-    1. Use `dotnet new webapp` to create a minimal Razor Pages web UI.
-    2. Your new project should reference the `Bank.App.Shared` project.
-    3. Your new project should reference the `Bank.Logic` project.
-    4. Ensure you put your web app in the `/Bank.App.Web` folder.
-    5. Ensure your csproj file is named `Bank.App.Web.csproj`.
-    6. Ensure your new project is added to the solution with `dotnet sln add`.
-    7. Update `Properties/launchSettings.json` to use your custom port `2345`.
-    8. Update `Properties/launchSettings.json` to delete the `https` configuration.
+    1. Use the minimal Razor Pages web UI called `Bank.App.Web`.
 
 2. Ensure basic functionality (at least):
+
+_Use the Console as reference._
 
     - List Accounts
         - List Accounts with Balances
@@ -35,5 +30,6 @@
             - Prompt the user: "Are you sure?"
         - View All Transactions
             - Show Table of Transactions
+        - Delete Account
 
 **Good luck.**
