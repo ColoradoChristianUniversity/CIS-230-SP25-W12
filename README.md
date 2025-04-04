@@ -1,6 +1,6 @@
 # Assignment 12
 
-I have created the Console version of the UI. You are going to create the Web version of the UI. The functionality needs to be the same - create accounts, list accounts, deposit and withdraw, etc. Here's a walkthrough of the Console functionality. 
+I have created the Console version of the UI. You are going to create the Web version of the UI. The functionality needs to be the same - create accounts, list accounts, deposit and withdraw, etc. The colors and tables in the Console are accomplished by the NuGet package `Spectre` which was created to make Console apps nice - doing much of the hard work we did in the early weeks of class. There is no requirement that the Console and the Web apps look alike, just that they behave alike. Here's a walkthrough of the Console functionality.
 
 ![](bank.gif)
 
