@@ -6,7 +6,7 @@
 2. Your code must compile and run without errors.
 3. You must submit your repository URL in Brightspace.
 
-## Assignment Requirements (80 points)
+## Assignment Requirements
 
 1. Copy the `Console App` into a `Web App`. 
 
@@ -31,10 +31,5 @@ _Use the Console as reference._
         - View All Transactions
             - Show Table of Transactions
         - Delete Account
-
-## Optional Bonus (40 points)
-
-1. Add `Nickname` to `Account.cs`
-2. Allow user to edit `Nickname` in Web
 
 **Good luck.**
