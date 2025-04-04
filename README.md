@@ -14,7 +14,7 @@ As we discussed in class, we have several projects in this solution. Each has on
 ---
 config:
   flowchart:
-    defaultRenderer: elk
+    defaultRenderer: elk  
     theme: default
   look: simple
   layout: fixed
