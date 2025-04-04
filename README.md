@@ -8,15 +8,7 @@ I have created the Console version of the UI. You are going to create the Web ve
 
 ### Projects and how they relate
 
-As we discussed in class, we have several projects in this solution. Each has only a few classes, dedicated to the purpose of the project. For example, the `Bank.Api` project (the Web API) is the central project used by both our Console and Web projects. 
-
-Those Client projects are only "coupled" to the Web API project over HTTP, that is, when they call to one of the Web API endpoints. Conversely, the Web API can never call the Console or Web projects as a Web API can only listen for requests it receives.  
-
-The `Bank.Api` project (the Web API) uses the code in `Bank.Logic`. Look closely, the Console and Web projects also use the code in the `Bank.Logic` project. These references are simple project references. 
-
-, but so do the Console and and Web projects - we consider this code reusable. 
-
-the Bank.Logic project has the core operational code, even though Bank.Api has the code to store accounts in files. 
+As we discussed in class, we have several projects in this solution. Each has only a few classes, dedicated to the purpose of the project. For example, the `Bank.Api` project (the Web API) is the central project used by both our Console and Web projects. Those Client projects are only "coupled" to the Web API project over HTTP, that is, when they call to one of the Web API endpoints. Conversely, the Web API can never call the Console or Web projects as a Web API can only listen for requests it receives. The `Bank.Api` project (the Web API) uses the code in `Bank.Logic`. Look closely, the Console and Web projects also use the code in the `Bank.Logic` project. These references are simple project references.  
 
 ```mermaid
 ---
