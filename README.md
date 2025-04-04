@@ -196,5 +196,6 @@ _Use the Console as reference._
 
 1. Add `Nickname` to `Account.cs`
 2. Allow user to edit `Nickname` in Web
+3. Provide a Sequence diagram of the operation.
 
 **Good luck.**
