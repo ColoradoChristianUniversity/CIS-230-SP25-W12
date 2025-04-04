@@ -32,4 +32,9 @@ _Use the Console as reference._
             - Show Table of Transactions
         - Delete Account
 
+## Optional Bonus (40 points)
+
+1. Add `Nickname` to `Account.cs`
+2. Allow user to edit `Nickname` in Web
+
 **Good luck.**
