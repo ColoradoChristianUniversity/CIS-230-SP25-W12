@@ -10,6 +10,8 @@ public record class Account
 
     public int Id { get; init; } = default;
 
+    public string Nickname { get; init; } = string.Empty;
+
     [JsonIgnore]
     public double Balance => txns.Sum(t => t.Amount);
 
@@ -21,10 +23,11 @@ public record class Account
     private List<Transaction> txns { get; init; } = [];
 
     [JsonConstructor]
-    private Account(AccountSettings settings, int id, List<Transaction> txns)
+    private Account(AccountSettings settings, int id, string nickname, List<Transaction> txns)
     {
         Settings = settings ?? new();
         Id = id;
+        Nickname = nickname ?? string.Empty;
         this.txns = txns ?? [];
     }
 

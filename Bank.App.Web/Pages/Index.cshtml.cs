@@ -19,6 +19,20 @@ public class IndexModel : PageModel
             return RedirectToPage("/Error");
         }
     }
+    
+    public async Task<IActionResult> OnGetCreateAsync()
+    {
+        try
+        {
+            var apiClient = new BankApiClient(default, validateConnection: true);
+            await apiClient.CreateAccountAsync();
+            return RedirectToPage("/Index");
+        }
+        catch
+        {
+            return RedirectToPage("/Error");
+        }
+    }
 
     public IEnumerable<Account> Accounts { get; set; } = [];
 

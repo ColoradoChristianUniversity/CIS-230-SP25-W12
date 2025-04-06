@@ -110,10 +110,10 @@ public class AccountTests
         var result = account.TryAddTransaction(-100, TransactionType.Withdrawal);
 
         // Assert
-        result.Should().BeTrue();
-        account.Transactions.Count.Should().Be(2);
+        result.Should().BeFalse();
+        account.Transactions.Count.Should().Be(1);
         account.Transactions.Any(t => t.Type == TransactionType.Fee_Overdraft).Should().BeTrue();
-        account.Balance.Should().Be(-100 - account.Settings.OverdraftFee);
+        account.Balance.Should().Be(-Math.Abs(account.Settings.OverdraftFee));
     }
 
     [Fact]

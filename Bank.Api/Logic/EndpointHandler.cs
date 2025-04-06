@@ -11,23 +11,23 @@ public class EndpointHandler(IStorage storage) : IEndpointHandler
 
         IResult Do()
         {
+            IResult result = Results.Ok();
+
             if (!storage.TryGetAccount(accountId, out var account))
             {
-                return Results.NotFound($"Account {accountId} not found");
+                result = Results.NotFound($"Account {accountId} not found");
             }
-
-            if (!Enum.TryParse<TransactionType>(type, true, out var transactionType))
+            else if (!Enum.TryParse<TransactionType>(type, true, out var transactionType))
             {
-                return Results.BadRequest($"Invalid transaction type: {type}");
+                result = Results.BadRequest($"Invalid transaction type: {type}");
             }
-
-            if (!account.TryAddTransaction(amount, transactionType))
+            else if (!account.TryAddTransaction(amount, transactionType))
             {
-                return Results.BadRequest($"Transaction of type {transactionType} failed for account {accountId}");
+                result = Results.BadRequest($"Transaction of type {transactionType} failed for account {accountId}");
             }
 
             storage.UpdateAccount(account);
-            return Results.Ok();
+            return result;
         }
     }
 
@@ -131,16 +131,35 @@ public class EndpointHandler(IStorage storage) : IEndpointHandler
                 return Results.NotFound($"Account {accountId} not found");
             }
 
-            var balance = account.Balance;
-            if (balance < amount)
+            if (!account.TryAddTransaction(-Math.Abs(amount), TransactionType.Withdrawal))
             {
-                return Results.BadRequest("Insufficient funds");
+                return Results.BadRequest("Transaction failed");
             }
 
-            account.TryAddTransaction(-Math.Abs(amount), TransactionType.Withdrawal);
+            storage.UpdateAccount(account);
             return Results.Ok();
         }
+    }
 
+    public async Task<IResult> UpdateNicknameAsync(int accountId, string nickname)
+    {
+        return await WrapperAsync(Do);
+
+        IResult Do()
+        {
+            if (!storage.TryGetAccount(accountId, out var account))
+            {
+                return Results.NotFound($"Account {accountId} not found");
+            }
+
+            // Create a new account with the updated nickname (since Account is a record)
+            var updatedAccount = account with { Nickname = nickname };
+
+            // Update the account in storage
+            storage.UpdateAccount(updatedAccount);
+
+            return Results.Ok(updatedAccount);
+        }
     }
 
     public static async Task<IResult> WrapperAsync(Func<IResult> action)

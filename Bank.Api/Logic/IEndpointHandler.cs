@@ -11,5 +11,6 @@ namespace Bank.Api.Logic
         Task<IResult> GetTransactionHistoryAsync(int accountId);
         Task<IResult> AddTransactionAsync(int accountId, string type, double amount);
         Task<IResult> ListAccountsAsync();
+        Task<IResult> UpdateNicknameAsync(int accountId, string nickname);
     }
 }

@@ -46,5 +46,8 @@ public partial class Program
 
         app.MapPost("/transactions/{accountId}/{type}/{amount}", async (IEndpointHandler handler, int accountId, string type, double amount) => 
             await handler.AddTransactionAsync(accountId, type, amount));
+
+        app.MapPost("/account/{accountId}/nickname", async (IEndpointHandler handler, int accountId, string nickname) => 
+            await handler.UpdateNicknameAsync(accountId, nickname));
     }
 }

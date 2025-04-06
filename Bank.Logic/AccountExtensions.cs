@@ -8,6 +8,11 @@ public static class AccountExtensions
 {
     public static bool TryAddTransaction(this Account account, double amount, TransactionType type)
     {
+        if (account is null)
+        {
+            return false;
+        }
+
         if (double.IsNaN(amount) || double.IsInfinity(amount))
         {
             return false;
@@ -18,32 +23,42 @@ public static class AccountExtensions
             return false;
         }
 
-        var isNegative = TransactionTypeExtensions.InidicatesNegativeAmount(type);
-        if (isNegative && amount >= 0)
+        if (!ValidateTransactionAmount(amount, type))
         {
             return false;
         }
-
-        if (!isNegative && amount < 0)
-        {
-            return false;
-        }
-
-        var now = DateTime.Now;
-        var transaction = new Transaction(type, amount, now);
 
         var list = GetWritableTransactionList(account);
-        list.Add(transaction);
 
-        var balance = list.Sum(t => t.Amount);
-
-        if (type == TransactionType.Withdrawal && balance < 0)
+        var predictedNewBalance = account.Balance + amount;
+        if (predictedNewBalance < 0)
         {
-            var overdraft = new Transaction(TransactionType.Fee_Overdraft, -Math.Abs(account.Settings.OverdraftFee), now);
+            var overdraft = new Transaction(TransactionType.Fee_Overdraft, -Math.Abs(account.Settings.OverdraftFee), DateTime.Now);
             list.Add(overdraft);
+            return false;
+        }
+        else
+        {
+            var transaction = new Transaction(type, amount, DateTime.Now);
+            list.Add(transaction);
+            return true;
         }
 
-        return true;
+        static bool ValidateTransactionAmount(double amount, TransactionType type)
+        {
+            var isNegative = TransactionTypeExtensions.InidicatesNegativeAmount(type);
+            if (isNegative && amount >= 0)
+            {
+                return false;
+            }
+
+            if (!isNegative && amount < 0)
+            {
+                return false;
+            }
+
+            return true;
+        }
     }
 
     private static List<Transaction> GetWritableTransactionList(Account account)

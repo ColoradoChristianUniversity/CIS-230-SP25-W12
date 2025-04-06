@@ -60,6 +60,12 @@ public class BankApiClient : IApiClient
     {
         await _http.DeleteAsync($"/account/{accountId}");
     }
+
+    public async Task UpdateNicknameAsync(int accountId, string nickname)
+    {
+        var content = new StringContent(nickname, System.Text.Encoding.UTF8, "text/plain");
+        await _http.PostAsync($"/account/{accountId}/nickname?nickname={Uri.EscapeDataString(nickname)}", null);
+    }
 }
 
 

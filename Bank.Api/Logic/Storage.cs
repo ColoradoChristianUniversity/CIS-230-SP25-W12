@@ -66,6 +66,11 @@ public class Storage : IStorage
 
     public Account UpdateAccount(Account account)
     {
+        if (account is null)
+        {
+            return account!;
+        }
+
         if (TryGetAccount(account.Id, out var existingAccount))
         {
             accounts.Remove(existingAccount);
