@@ -73,7 +73,7 @@ sequenceDiagram
         participant ConsoleApp as Program.cs
         participant AccountMenu as AccountMenuScreen.cs
     end
-    box "BankApp.Shared"
+    box "Bank.App.Shared"
         participant ApiClient as BankApiClient.cs
     end
     box "Bank.Api"
