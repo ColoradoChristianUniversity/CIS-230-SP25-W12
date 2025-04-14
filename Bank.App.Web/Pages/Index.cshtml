@@ -3,15 +3,15 @@
 @{
     ViewData["Title"] = "Home page";
 }
-
 <div class="text-center">
 
     <h1 class="display-4">Bank Accounts</h1>
     <table class="table table-striped table-bordered">
         <thead>
-            <tr>
+            <tr id="indexHeaderRow">
                 <th>Account ID</th>
                 <th>Balance</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -20,9 +20,33 @@
                 <tr>
                     <td>@account.Id</td>
                     <td>@account.Balance.ToString("C")</td>
+                    <td>
+                        <a asp-page="/AccountMenu" asp-route-id="@account.Id" class="btn btn-primary">Veiw Account</a>
+                    </td>
                 </tr>
             }
         </tbody>
     </table>
-
+    <button id="createAccountBtn" class="btn btn-primary" onclick="handleCreateAccount()">Create New Account</button>
 </div>
+<script>
+    async function handleCreateAccount(accountId) {
+        if (confirm("Are you sure you want to create a new account?")) {
+            try {
+                const response = await fetch(`http://localhost:1234/account`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    location.reload(); // Reload the page to update the balance
+                } else {
+                    const error = await response.text();
+                    alert(`Error 1: ${error}`);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("An error occurred while creating the account.");
+            }
+        }
+    }
+</script>

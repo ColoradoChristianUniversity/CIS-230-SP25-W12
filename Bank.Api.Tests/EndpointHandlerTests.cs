@@ -169,7 +169,7 @@ public class EndpointHandlerTests : IDisposable
     }
 
     [Fact]
-    public async Task Withdraw_InsufficientFunds_ReturnsBadRequest()
+    public async Task Withdraw_InsufficientFunds_ReturnsOK()
     {
         // Arrange
         var createResult = await handler.CreateAccountAsync();
@@ -179,7 +179,7 @@ public class EndpointHandlerTests : IDisposable
         var withdrawal = await handler.WithdrawAsync(accountId, 100);
 
         // Assert
-        withdrawal.Should().BeOfType<BadRequest<string>>();
+        withdrawal.Should().BeOfType<Ok>();
     }
 
     [Fact]

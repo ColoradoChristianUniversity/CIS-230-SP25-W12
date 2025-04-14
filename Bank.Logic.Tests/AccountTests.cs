@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Bank.Logic.Models;
+using System.Reflection;
 
 namespace Bank.Logic.Tests;
 
@@ -111,9 +112,9 @@ public class AccountTests
 
         // Assert
         result.Should().BeTrue();
-        account.Transactions.Count.Should().Be(2);
+        account.Transactions.Count.Should().Be(1);
         account.Transactions.Any(t => t.Type == TransactionType.Fee_Overdraft).Should().BeTrue();
-        account.Balance.Should().Be(-100 - account.Settings.OverdraftFee);
+        account.Balance.Should().Be(-account.Settings.OverdraftFee);
     }
 
     [Fact]
@@ -184,5 +185,18 @@ public class AccountTests
         nan.Should().BeFalse();
         posInf.Should().BeFalse();
         negInf.Should().BeFalse();
+    }
+
+    [Fact]
+    public void TryAddTransaction_NullAccount_ReturnsFalse()
+    {
+        // Arrange
+        Account? account = null;
+
+        // Act
+        var result = account.TryAddTransaction(100, TransactionType.Deposit);
+
+        // Assert
+        Assert.False(result);
     }
 }

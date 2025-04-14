@@ -1,0 +1,50 @@
+sequenceDiagram
+
+    box "Bank.App.Console"
+        participant ConsoleApp as Program.cs
+        participant AccountMenu as AccountMenuScreen.cs
+        participant ApiClient as BankApiClient.cs
+    end
+
+    box "Bank.Api"
+        participant Api as Program.cs
+        participant Endpoint as EndpointHandler.cs
+        participant Storage as Storage.cs
+        participant Account as Bank.Logic.AccountExtensions.cs
+    end
+
+    ConsoleApp->>AccountMenu: ShowAsync()
+    AccountMenu->>ApiClient: WithdrawAsync(accountId, amount)
+    ApiClient->>Api: PostAsync($"/withdraw/{accountId}/{amount}")
+    Api->>Endpoint: Route Request to EndpointHandler
+    Endpoint->>Storage: TryGetAccount(accountId)
+    alt Account Found
+        Storage-->>Endpoint: Account (if found)
+        Endpoint->>Account: TryAddTransaction(amount, TransactionType.Deposit)
+        alt Transaction Had No Errors
+            alt Balance > Withdraw Amount
+                Account->>Account: Add Withdrawal To the <br/> Transaciton List
+            else Balance < Withdraw Amount
+                Account->>Account: Add OverdraftFee To the <br/> Transaciton List
+            end
+            Account-->>Endpoint: Transaction added successfully (True)
+            Endpoint->>Storage: UpdateAccount(account)
+            Storage-->>Endpoint: Account updated
+            Endpoint-->>Api: Success response
+            Api-->>ApiClient: Success response
+            ApiClient-->>AccountMenu: Deposit successful
+            AccountMenu-->>ConsoleApp: Return to menu
+        else Transaction Failed
+            Account-->>Endpoint: Transaction failed (False)
+            Endpoint-->>Api: Error 400
+            Api-->>ApiClient: Error response
+            ApiClient-->>AccountMenu: Display error message
+            AccountMenu-->>ConsoleApp: Return to menu
+        end
+    else Account Not Found
+        Storage-->>Endpoint: Error 404
+        Endpoint-->>Api: Error response
+        Api-->>ApiClient: Error response
+        ApiClient-->>AccountMenu: Display error message
+        AccountMenu-->>ConsoleApp: Return to menu
+    end

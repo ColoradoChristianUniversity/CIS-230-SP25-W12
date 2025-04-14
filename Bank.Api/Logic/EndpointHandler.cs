@@ -131,13 +131,10 @@ public class EndpointHandler(IStorage storage) : IEndpointHandler
                 return Results.NotFound($"Account {accountId} not found");
             }
 
-            var balance = account.Balance;
-            if (balance < amount)
-            {
-                return Results.BadRequest("Insufficient funds");
-            }
-
             account.TryAddTransaction(-Math.Abs(amount), TransactionType.Withdrawal);
+
+            storage.UpdateAccount(account);
+
             return Results.Ok();
         }
 
