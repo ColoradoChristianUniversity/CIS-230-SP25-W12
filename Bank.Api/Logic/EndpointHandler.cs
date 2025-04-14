@@ -120,28 +120,38 @@ public class EndpointHandler(IStorage storage) : IEndpointHandler
         }
     }
 
-    public async Task<IResult> WithdrawAsync(int accountId, double amount)
+public async Task<IResult> WithdrawAsync(int accountId, double amount)
+{
+    return await WrapperAsync(() =>
     {
-        return await WrapperAsync(Do);
-
-        IResult Do()
+        if (!storage.TryGetAccount(accountId, out var account))
         {
-            if (!storage.TryGetAccount(accountId, out var account))
-            {
-                return Results.NotFound($"Account {accountId} not found");
-            }
-
-            var balance = account.Balance;
-            if (balance < amount)
-            {
-                return Results.BadRequest("Insufficient funds");
-            }
-
-            account.TryAddTransaction(-Math.Abs(amount), TransactionType.Withdrawal);
-            return Results.Ok();
+            return Results.NotFound($"Account {accountId} not found");
         }
 
-    }
+        // Check if the account has sufficient funds.
+        if (account.Balance < amount)
+        {
+            // Insufficient funds: do not subtract money; add an overdraft fee transaction.
+            var feeAdded = account.TryAddTransaction(-Math.Abs(account.Settings.OverdraftFee), TransactionType.Fee_Overdraft);
+            if (feeAdded)
+            {
+                storage.UpdateAccount(account);
+            }
+            return Results.BadRequest("Insufficient funds. Overdraft fee applied.");
+        }
+        else
+        {
+            var success = account.TryAddTransaction(-Math.Abs(amount), TransactionType.Withdrawal);
+            if (!success)
+            {
+                return Results.BadRequest("Withdrawal failed due to business rule violation.");
+            }
+            storage.UpdateAccount(account);
+            return Results.Ok();
+        }
+    });
+}
 
     public static async Task<IResult> WrapperAsync(Func<IResult> action)
     {
