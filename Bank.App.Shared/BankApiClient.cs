@@ -28,7 +28,7 @@ public class BankApiClient : IApiClient
             }
         }
     }
-
+    
     public async Task<List<Account>> GetAccountsAsync()
     {
         var response = await _http.GetAsync("/");
@@ -48,12 +48,14 @@ public class BankApiClient : IApiClient
 
     public async Task DepositAsync(int accountId, double amount)
     {
-        await _http.PostAsync($"/deposit/{accountId}/{amount}", null);
+    var response = await _http.PostAsync($"/deposit/{accountId}/{amount}", null);
+    response.EnsureSuccessStatusCode(); // Ensure the API call was successful
     }
 
     public async Task WithdrawAsync(int accountId, double amount)
     {
-        await _http.PostAsync($"/withdraw/{accountId}/{amount}", null);
+    var response = await _http.PostAsync($"/withdraw/{accountId}/{amount}", null);
+    response.EnsureSuccessStatusCode(); // Ensure the API call was successful
     }
 
     public async Task DeleteAccountAsync(int accountId)
