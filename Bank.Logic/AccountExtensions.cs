@@ -8,6 +8,11 @@ public static class AccountExtensions
 {
     public static bool TryAddTransaction(this Account account, double amount, TransactionType type)
     {
+        if (account is null)
+        {
+            return false;
+        }
+
         if (double.IsNaN(amount) || double.IsInfinity(amount))
         {
             return false;
@@ -18,7 +23,7 @@ public static class AccountExtensions
             return false;
         }
 
-        var isNegative = TransactionTypeExtensions.InidicatesNegativeAmount(type);
+        var isNegative = type.InidicatesNegativeAmount();
         if (isNegative && amount >= 0)
         {
             return false;
@@ -29,26 +34,27 @@ public static class AccountExtensions
             return false;
         }
 
-        var now = DateTime.Now;
-        var transaction = new Transaction(type, amount, now);
+
+        //start
+        var transaction = type switch
+        {
+            TransactionType.Withdrawal when account.Balance + amount < 0 =>
+            new Transaction(TransactionType.Fee_Overdraft, -Math.Abs(account.Settings.OverdraftFee), DateTime.Now),
+            _ => new Transaction(type, amount, DateTime.Now)
+        };
 
         var list = GetWritableTransactionList(account);
         list.Add(transaction);
 
-        var balance = list.Sum(t => t.Amount);
-
-        if (type == TransactionType.Withdrawal && balance < 0)
-        {
-            var overdraft = new Transaction(TransactionType.Fee_Overdraft, -Math.Abs(account.Settings.OverdraftFee), now);
-            list.Add(overdraft);
-        }
-
         return true;
     }
 
+    
+
     private static List<Transaction> GetWritableTransactionList(Account account)
     {
-        var prop = typeof(Account).GetProperty("txns", BindingFlags.NonPublic | BindingFlags.Instance);
+        var prop = typeof(Account)
+            .GetProperty("txns", BindingFlags.NonPublic | BindingFlags.Instance);
         if (prop is null)
         {
             throw new InvalidOperationException("Unable to access txns property.");

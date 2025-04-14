@@ -40,23 +40,19 @@ public class EndpointHandler(IStorage storage) : IEndpointHandler
             return Results.Ok(storage.NewAccount());
         }
     }
-
+    
     public async Task<IResult> DeleteAccountAsync(int accountId)
     {
-        return await WrapperAsync(Do);
-
-        IResult Do()
-        {
-            storage.RemoveAccount(accountId);
-            return Results.Ok();
-        }
+    return await WrapperAsync(() =>
+    {
+        storage.RemoveAccount(accountId);
+        return Results.Ok();
+    });
     }
 
     public async Task<IResult> DepositAsync(int accountId, double amount)
     {
-        return await WrapperAsync(Do);
-
-        IResult Do()
+        return await WrapperAsync(() =>
         {
             if (!storage.TryGetAccount(accountId, out var account))
             {
@@ -70,7 +66,7 @@ public class EndpointHandler(IStorage storage) : IEndpointHandler
 
             storage.UpdateAccount(account);
             return Results.Ok();
-        }
+        });
     }
 
     public async Task<IResult> GetAccountAsync(int accountId)
@@ -131,13 +127,11 @@ public class EndpointHandler(IStorage storage) : IEndpointHandler
                 return Results.NotFound($"Account {accountId} not found");
             }
 
-            var balance = account.Balance;
-            if (balance < amount)
-            {
-                return Results.BadRequest("Insufficient funds");
-            }
 
             account.TryAddTransaction(-Math.Abs(amount), TransactionType.Withdrawal);
+
+            storage.UpdateAccount(account);
+            
             return Results.Ok();
         }
 
