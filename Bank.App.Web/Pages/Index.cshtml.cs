@@ -1,31 +1,24 @@
-using Bank.Logic.Models;
-
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Bank.Logic.Models;
+using Bank.App.Shared;  // The namespace for IApiClient
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
-namespace Bank.App.Web.Pages;
-
-public class IndexModel : PageModel
+namespace Bank.App.Web.Pages
 {
-    public async Task<IActionResult> OnGetAsync()
+    public class IndexModel : PageModel
     {
-        try
-        {
-            Accounts = await GetAccountsAsync();
-            return Page();
-        }
-        catch 
-        {
-            return RedirectToPage("/Error");
-        }
-    }
+        private readonly IApiClient _apiClient;
+        public IEnumerable<Account> Accounts { get; set; } = new List<Account>();
 
-    public IEnumerable<Account> Accounts { get; set; } = [];
+        public IndexModel(IApiClient apiClient)
+        {
+            _apiClient = apiClient;
+        }
 
-    public async Task<IEnumerable<Account>> GetAccountsAsync()
-    {
-        var apiClient = new BankApiClient(default, validateConnection: true);
-        var accounts = await apiClient.GetAccountsAsync();
-        return accounts;
+        public async Task OnGetAsync()
+        {
+            Accounts = await _apiClient.GetAccountsAsync();
+        }
     }
 }

@@ -1,3 +1,5 @@
+namespace Bank.App.Shared; 
+
 using System.Net.Http.Json;
 
 using Bank.Logic.Models;

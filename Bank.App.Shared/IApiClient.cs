@@ -1,3 +1,5 @@
+namespace Bank.App.Shared; 
+
 using Bank.Logic.Models;
 
 public interface IApiClient
