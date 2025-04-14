@@ -2,6 +2,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
+builder.Services.AddHttpClient<IApiClient, BankApiClient>(client =>
+{
+    client.BaseAddress = new Uri("http://localhost:1234"); // Replace with your API's base URL
+});
 
 var app = builder.Build();
 

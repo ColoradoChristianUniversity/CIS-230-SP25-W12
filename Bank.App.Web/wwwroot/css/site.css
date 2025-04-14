@@ -6,6 +6,10 @@ html {
   html {
     font-size: 16px;
   }
+  
+  #accountBalance{
+    font-size: 12px;
+  }
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
@@ -28,4 +32,179 @@ body {
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
+}
+
+/*~~~~~~~ LS Additions ~~~~~~~*/
+
+/* INDEX ADDITION */
+#createAccountBtn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: auto;
+}
+
+/* ACCOUNT NUMBER & BALANCE */
+#accountHeader{
+  display: flex;
+}
+
+#accountHeader strong{
+  font-size: 20px;
+}
+
+#accountBalance {
+  color: white;
+  background-color: #20935d;
+  border-radius: 5px;
+  margin-left: auto;
+  margin-right: 0%;
+  padding: 5px;
+
+  font-weight: bold;
+  font-size: 10px;
+
+  display: flex;
+  align-items: center;
+}
+
+/* NICKNAME */
+#nickname{
+  border-style: solid;
+  border-color: lightgray;
+}
+
+#nicknameContainer{
+  display: flex;
+  margin: 10px;
+
+  border-style: solid;
+  border-color: lightgray;
+  border-radius: 5px;
+}
+
+#nickname p{
+  width: 100%;
+  margin: 5px;
+}
+
+#nicknameInput{
+  width: 75%;
+  margin: 0%;
+  border-style: none;
+  border-radius: 5px;
+  margin-left: 5px;
+}
+
+#nickname #nicknameButton{
+  width: 25%;
+
+  margin: 0%;
+
+  border-radius: 10px;
+  background-color: #1577ff;
+  color: white;
+
+  border-radius: 0px 5px 5px 0px;
+}
+
+/* DEPOSIT & WITHDRAW */
+
+#accountActions{
+  display: flex;
+  justify-content: space-around;
+
+  border-style: solid;
+  border-color: lightgray;
+  border-top-style: none;
+}
+
+#depositContainer, #withdrawContainer{
+  width: 50%;
+  border-radius: 5px;
+
+  margin: 10px;
+
+  border-style: solid;
+  border-color: lightgray;
+}
+
+#depositFunds, #withdrawFunds{
+  width: 100%;
+  padding: 10px;
+}
+
+#depositContainer form, #withdrawContainer form{
+  display: flex;
+
+  margin: 10px;
+
+  border-style: solid;
+  border-radius: 5px;
+  border-color: lightgray;
+}
+
+#depositFunds, #depositFundsBtn{
+  background-color: #20935d;
+  color: white;
+}
+
+#withdrawFunds, #withdrawFundsBtn{
+  background-color: #ffd108;
+  color: black;
+}
+
+#depositContainer label, #withdrawContainer label{
+  width: 7%;
+  margin: 0%;
+  border-style: none;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+
+  border-right-style: solid;
+  border-color: lightgray;
+
+}
+
+#depositContainer input, #withdrawContainer input{
+  width: 68%;
+  margin: 0%;
+  border-style: none;
+  padding-left: 10px;
+}
+
+#depositFundsBtn, #withdrawFundsBtn{
+  width: 25%;
+  padding: 5px;
+  text-align: center;
+  margin: 0%;
+
+  border-radius: 0px 3px 3px 0px;
+  border-style: none;
+}
+
+.accountActionsForm{
+  margin: 5%;
+}
+
+/* TRANSACTION HISTORY */
+#transactionHistory{
+  padding: 10px;
+  border-style: solid;
+  border-top-style: none;
+  border-color: lightgrey;
+}
+
+/* DELETE ACCOUNT */
+#deleteAccountContainer{
+  padding: 5px;
+  padding-left: 15px;
+  
+  border-style: solid;
+  border-top-style: none;
+  border-color: lightgrey;
 }

@@ -132,6 +132,9 @@ public class EndpointHandler(IStorage storage) : IEndpointHandler
             }
 
             account.TryAddTransaction(-Math.Abs(amount), TransactionType.Withdrawal);
+
+            storage.UpdateAccount(account);
+
             return Results.Ok();
         }
 

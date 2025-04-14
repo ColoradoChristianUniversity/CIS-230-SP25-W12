@@ -11,10 +11,20 @@ public partial class Program
         builder.Services.AddSwaggerGen();
         builder.Services.AddSingleton<IEndpointHandler, EndpointHandler>();
         builder.Services.AddSingleton<IStorage, Storage>();
+        builder.Services.AddCors(options =>
+        {
+            options.AddDefaultPolicy(policy =>
+            {
+                policy.WithOrigins("https://localhost:7167")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            });
+        });
 
         var app = builder.Build();
         app.UseSwagger();
         app.UseSwaggerUI();
+        app.UseCors();
 
         ConfigureEndpoints(app);
 

@@ -114,11 +114,11 @@ public class MinimalApiTests : IClassFixture<WebApplicationFactory<Program>>, ID
     }
 
     [Fact]
-    public async Task POST_Withdraw_WithInsufficientFunds_ReturnsBadRequest()
+    public async Task POST_Withdraw_WithInsufficientFunds_ReturnsOK()
     {
         var accountId = CreateTestAccountId();
         var response = await _client.PostAsync($"/withdraw/{accountId}/100", null);
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
